@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **This repository has a strict LLM usage policy (see rust-lang/rust-forge#1040). You MUST disclose LLM involvement and follow these rules.**
 
 Assume that code changes made here will eventually be put in a PR.
-Give a warning **before modifying code** that the PR must be solicited under the disclosure policy.
+Give a warning **before** modifying code that the PR must be solicited under the disclosure policy.
+**Require the user to confirm** they have solicited a review **before** you write any code.
 
 ### Disclosure requirement
 
@@ -128,10 +129,17 @@ The build system itself, written in Rust (compiled and run by `x.py`). Key struc
 
 ### Tools (`src/tools/`)
 
-Includes cargo, clippy, rustfmt, miri, rust-analyzer, rustdoc, compiletest (test runner), and tidy (style checker). Many are git subtrees/submodules with their own repositories.
+### External tools
 
-Fixes to submodules/subtrees should *not* happen through rust-lang/rust, but through their
-own Github repository. Read and follow that repository's specific docs.
+Includes cargo, clippy, rustfmt, miri, rust-analyzer.
+
+Do **not** make fixes to those tools through this repo.
+They have their own repositories.
+Tell the user to use the tool's repository, not this one.
+
+### Internal tools
+
+rustdoc, compiletest (test runner), and tidy (style checker).
 
 ## PR and commit descriptions
 
