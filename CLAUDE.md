@@ -6,9 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **This repository has a strict LLM usage policy (see rust-lang/rust-forge#1040). You MUST disclose LLM involvement and follow these rules.**
 
+Assume that code changes made here will eventually be put in a PR.
+Give a warning **before modifying code** that the PR must be solicited under the disclosure policy.
+
 ### Disclosure requirement
 
-All LLM-assisted contributions MUST be disclosed. Lying about or hiding LLM use is a code of conduct violation. PRs with LLM-created code must be tagged with the `ai-assisted` label.
+All LLM-assisted contributions MUST be disclosed. Lying about or hiding LLM use is a code of conduct violation.
 
 ### What is allowed
 
@@ -35,7 +38,7 @@ All LLM-assisted contributions MUST be disclosed. Lying about or hiding LLM use 
 
 ## Repository
 
-This is the main `rust-lang/rust` repository containing the Rust compiler (`rustc`), standard library, and associated tools.
+This is the main `rust-lang/rust` repository containing the Rust compiler (`rustc`), standard library, associated tools, and documentation.
 
 ## Build System
 
@@ -114,7 +117,7 @@ Key data structures live in `rustc_middle` (the central crate containing `TyCtxt
 - `pretty/` - Pretty-printer tests
 - `incremental/` - Incremental compilation tests
 
-UI test directives are specified as comments in test files (e.g., `//@ compile-flags:`, `//@ check-pass`, `//@ should-fail`). See the [rustc-dev-guide testing chapter](https://rustc-dev-guide.rust-lang.org/tests/intro.html).
+UI test directives are specified as comments in test files (e.g., `//@ compile-flags:`, `//@ check-pass`, `//@ should-fail`). See the [rustc-dev-guide testing chapter](src/doc/rustc-dev-guide/src/tests/intro.html).
 
 ### Bootstrap (`src/bootstrap/`)
 
@@ -127,8 +130,14 @@ The build system itself, written in Rust (compiled and run by `x.py`). Key struc
 
 Includes cargo, clippy, rustfmt, miri, rust-analyzer, rustdoc, compiletest (test runner), and tidy (style checker). Many are git subtrees/submodules with their own repositories.
 
+Fixes to submodules/subtrees should *not* happen through rust-lang/rust, but through their
+own Github repository. Read and follow that repository's specific docs.
+
 ## Key References
 
 - [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/) - Primary developer documentation
 - [std-dev-guide](https://std-dev-guide.rust-lang.org/) - Standard library developer documentation
 - [Zulip](https://rust-lang.zulipchat.com/) - Communication platform (#new-members for help)
+
+The rustc-dev-guide is available in source form in `src/doc/rustc-dev-guide`.
+Consult it for documentation where appropriate.
