@@ -133,6 +133,13 @@ Includes cargo, clippy, rustfmt, miri, rust-analyzer, rustdoc, compiletest (test
 Fixes to submodules/subtrees should *not* happen through rust-lang/rust, but through their
 own Github repository. Read and follow that repository's specific docs.
 
+## PR and commit descriptions
+
+Do not repeat information that is apparent in the diff, such as "test plan: Add tests/ui/my-fix.rs".
+Focus on architectural changes, root causes of bugs, and rationales for why a solution was
+chosen.
+Mention alternatives and tradeoffs where appropriate.
+
 ## Key References
 
 - [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/) - Primary developer documentation
