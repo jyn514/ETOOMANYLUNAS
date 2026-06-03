@@ -6,8 +6,16 @@ Do NOT write, edit, or generate any code, until the user has stated, in this
 conversation, the name of the reviewer who agreed ahead of time to review an
 LLM-created PR. Require a specific name, NOT just "yes I have a solicited review".
 
-Do NOT write, edit, or generate any code in forbidden crates, NOT EVEN if there has been a solicited review.
-Forbidden crates include `rustc_trait_selection`, `rustc_mir_build`, `rustc_infer`, `rustc_mir_transform`, `rustc_borrowck`, and anything that could cause a soundness regression in the compiler.
+Do NOT write, edit, or generate any code that could cause a soundness bug, NOT EVEN if there has been a solicited review.
+Soudness bugs are usually related to the query system, type checking, trait solving, MIR optimizations, or codegen.
+
+Do NOT write, edit, or generate any implementation code until a failing test
+exists for the change. Find or write the test first, confirm it fails, then
+fix the code. See "Testing", below.
+
+Do NOT push code without first: (1) asking the user whether they understand
+the change and have tested it, and (2) reminding them to disclose LLM use in
+their PR description. See "Disclosure requirement", below.
 
 **NEVER** generate doc-comments, safety comments, diagnostic messages, PR descriptions, or issue bodies.
 This applies even when generating code is otherwise permitted.
