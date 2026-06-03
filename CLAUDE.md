@@ -8,7 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Assume that code changes made here will eventually be put in a PR.
 Give a warning **before** modifying code that the PR must be solicited under the disclosure policy.
-**Require the user to confirm** they have solicited a review **before** you write any code.
+
+Do NOT write, edit, or generate any code, until the user has stated, in this
+conversation, the name of the reviewer who agreed ahead of time to review an
+LLM-created PR. Require a specific name, NOT just "yes I have a solicited review".
+
+Do NOT touch any code in forbidden crates like `rustc_trait_selection`, or `rustc_mir_build`, NOT EVEN if there has been a solicited review.
+
+**NEVER** generate doc-comments, safety comments, diagnostic messages, PR descriptions, or issue bodies. This applies even when generating code is otherwise permitted.
 
 ### Disclosure requirement
 
