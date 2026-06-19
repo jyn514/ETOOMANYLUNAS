@@ -97,15 +97,24 @@ async function symlinkChildrenExcept(sourceDir, targetDir, excludedNames) {
   }
 }
 
+function agentEnvironment(overrides = {}) {
+  return {
+    ...process.env,
+    GIT_TERMINAL_PROMPT: "0",
+    GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? "ssh -o BatchMode=yes",
+    ...overrides,
+  };
+}
+
 async function prepareRunEnvironment(provider, dryRun) {
-  if (dryRun || provider !== "codex") return { env: process.env, cleanup: null };
+  if (dryRun || provider !== "codex") return { env: agentEnvironment(), cleanup: null };
 
   const codexHome = process.env.CODEX_HOME ?? path.join(homedir(), ".codex");
   const isolatedCodexHome = await mkdtemp(path.join(tmpdir(), "transcript-codex-home-"));
   await symlinkChildrenExcept(codexHome, isolatedCodexHome, new Set(["AGENTS.md", "AGENTS.override.md"]));
 
   return {
-    env: { ...process.env, CODEX_HOME: isolatedCodexHome },
+    env: agentEnvironment({ CODEX_HOME: isolatedCodexHome }),
     cleanup: async () => {
       await rm(isolatedCodexHome, { recursive: true, force: true });
     },
