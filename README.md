@@ -9,7 +9,8 @@ Use `scripts/generate-transcripts.mjs` to run the same prompt scenarios through 
 Scenarios live in each transcript directory as `scenario.json`.
 Runs exclude the caller's global agent instructions (`~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`) while still allowing repository-local instruction files in the Rust checkout.
 Runs allow agent network access for issue lookup: Claude is invoked with `WebFetch` and `WebSearch`, and Codex is invoked with `sandbox_workspace_write.network_access=true`.
-Agent subprocesses run with non-interactive Git/SSH prompts disabled. Already-loaded `ssh-agent` keys still work, but missing keys fail instead of opening a passphrase prompt.
+Agent subprocesses run with non-interactive Git/SSH prompts disabled. SSH agent access is cleared, and Git/SSH askpass helpers are forced to fail fast instead of opening a prompt.
+Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` only if you want to restore inherited SSH agent behavior.
 
 ```sh
 ./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --provider claude
@@ -25,5 +26,7 @@ Useful flags:
 - `--provider claude|codex` selects a provider. Repeat it to run multiple providers. If omitted, both run.
 
 If `claude` or `codex` is not on `PATH`, set `CLAUDE_BIN=/full/path/to/claude` or `CODEX_BIN=/full/path/to/codex`.
+
+The script prints per-run and per-turn progress on stderr. If a child process goes silent for 30 seconds, it emits a heartbeat line that names the stuck run and turn. Use `--no-progress` if you want the old quiet behavior.
 
 Each run writes `<scenario>/<provider>.md`. The raw JSONL event stream is only used while rendering the Markdown transcript.

@@ -5,11 +5,12 @@ import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { clearInterval, setInterval } from "node:timers";
 import { randomUUID } from "node:crypto";
 
 function usage() {
   console.error(`Usage:
-  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run]
+  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run] [--progress|--no-progress]
 
 Scenarios are discovered from */scenario.json.
 Repeat --provider to run multiple providers. If omitted, both claude and codex run.`);
@@ -29,6 +30,7 @@ function parseArgs(argv) {
     skips: new Set(),
     jobs: 1,
     dryRun: false,
+    progress: true,
   };
 
   for (let i = 2; i < argv.length; i += 1) {
@@ -39,6 +41,8 @@ function parseArgs(argv) {
     else if (arg === "--skip") args.skips.add(argv[++i]);
     else if (arg === "--jobs") args.jobs = parsePositiveInteger(argv[++i], "--jobs");
     else if (arg === "--dry-run") args.dryRun = true;
+    else if (arg === "--no-progress") args.progress = false;
+    else if (arg === "--progress") args.progress = true;
     else if (arg === "--help" || arg === "-h") {
       usage();
       process.exit(0);
@@ -58,6 +62,13 @@ function parseArgs(argv) {
 
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
 
 function buildClaudeCommand(run, turn, state) {
@@ -120,10 +131,19 @@ async function symlinkChildrenExcept(sourceDir, targetDir, excludedNames) {
 }
 
 function agentEnvironment(overrides = {}) {
+  const allowSshPrompts = process.env.TRANSCRIPTS_ALLOW_SSH_PROMPTS === "1";
   return {
     ...process.env,
     GIT_TERMINAL_PROMPT: "0",
-    GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? "ssh -o BatchMode=yes",
+    GIT_ASKPASS: "/bin/false",
+    SSH_ASKPASS: "/bin/false",
+    SSH_ASKPASS_REQUIRE: "never",
+    SSH_AUTH_SOCK: allowSshPrompts ? process.env.SSH_AUTH_SOCK ?? "" : "",
+    SSH_AGENT_PID: allowSshPrompts ? process.env.SSH_AGENT_PID ?? "" : "",
+    GIT_SSH_COMMAND: allowSshPrompts
+      ? process.env.GIT_SSH_COMMAND ?? "ssh"
+      : "ssh -o BatchMode=yes -o PasswordAuthentication=no -o KbdInteractiveAuthentication=no -o PreferredAuthentications=publickey",
+    GCM_INTERACTIVE: "Never",
     ...overrides,
   };
 }
@@ -186,7 +206,7 @@ function collectCodexMarkdown(line, out, state) {
   }
 }
 
-async function runCommand({ command, args }, cwd, dryRun, env = process.env) {
+async function runCommand({ command, args }, cwd, dryRun, env = process.env, progressLabel = null) {
   if (dryRun) {
     return { stdout: "", stderr: "", status: 0, dryRunCommand: [command, ...args].map(shellQuote).join(" ") };
   }
@@ -195,18 +215,36 @@ async function runCommand({ command, args }, cwd, dryRun, env = process.env) {
     const child = spawn(command, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
+    let lastOutputAt = Date.now();
+    const startedAt = lastOutputAt;
+
+    const heartbeat = setInterval(() => {
+      if (!progressLabel) return;
+      const elapsed = Date.now() - startedAt;
+      const idle = Date.now() - lastOutputAt;
+      if (idle >= 30000) {
+        process.stderr.write(`⏳ ${progressLabel} still running after ${formatDuration(elapsed)} (${formatDuration(idle)} idle)\n`);
+        lastOutputAt = Date.now();
+      }
+    }, 30000);
 
     child.stdout.on("data", (data) => {
+      lastOutputAt = Date.now();
       stdout += data.toString();
     });
     child.stderr.on("data", (data) => {
+      lastOutputAt = Date.now();
       stderr += data.toString();
       process.stderr.write(data);
     });
     child.on("error", (error) => {
+      clearInterval(heartbeat);
       resolve({ stdout, stderr: `${stderr}${error.message}\n`, status: 127, error });
     });
-    child.on("close", (status) => resolve({ stdout, stderr, status }));
+    child.on("close", (status) => {
+      clearInterval(heartbeat);
+      resolve({ stdout, stderr, status });
+    });
   });
 }
 
@@ -225,18 +263,23 @@ async function runScenario(run, args) {
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
 
   try {
-    for (const turn of run.turns) {
+    for (const [turnIndex, turn] of run.turns.entries()) {
+      const progressLabel = `${run.name} (${run.provider}) turn ${turnIndex + 1}/${run.turns.length}`;
       state.claudeSawAssistantText = false;
       state.codexAgentMessageTexts.clear();
       const suffix = turn.suggested ? "  ## suggested" : "";
       transcript.push(`❯ ${turn.prompt}${suffix}`, "");
+
+      if (args.progress && !args.dryRun) {
+        console.error(`→ ${progressLabel}`);
+      }
 
       const command =
         run.provider === "claude"
           ? buildClaudeCommand(run, turn, state)
           : buildCodexCommand(run, turn, state);
 
-      const result = await runCommand(command, args.rustRepo, args.dryRun, runEnvironment.env);
+      const result = await runCommand(command, args.rustRepo, args.dryRun, runEnvironment.env, args.progress && !args.dryRun ? progressLabel : null);
       if (result.dryRunCommand) dryRunCommands.push(result.dryRunCommand);
       if (args.dryRun && run.provider === "codex" && !state.threadId) {
         state.threadId = "DRY_RUN_THREAD_ID";
@@ -302,14 +345,22 @@ async function discoverScenarios(args) {
 
 async function runAll(runs, args) {
   let nextRunIndex = 0;
+  let completedRuns = 0;
   const jobs = Math.min(args.jobs, runs.length);
+  const totalRuns = runs.length;
 
   async function worker() {
     while (nextRunIndex < runs.length) {
-      const run = runs[nextRunIndex];
+      const runIndex = nextRunIndex;
+      const run = runs[runIndex];
       nextRunIndex += 1;
-      if (!args.dryRun) console.error(`\n==> ${run.name} (${run.provider})`);
+      if (!args.dryRun && args.progress) console.error(`\n==> [${runIndex + 1}/${totalRuns}] ${run.name} (${run.provider})`);
+      else if (!args.dryRun) console.error(`\n==> ${run.name} (${run.provider})`);
       await runScenario(run, args);
+      completedRuns += 1;
+      if (!args.dryRun && args.progress) {
+        console.error(`✓ [${completedRuns}/${totalRuns}] ${run.name} (${run.provider}) done`);
+      }
     }
   }
 
