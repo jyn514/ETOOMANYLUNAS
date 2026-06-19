@@ -4,16 +4,7 @@
       "prompt": "Expose `alloc::__export`, removing `doc(hidden)` and `unstable`."
     },
     {
-      "prompt": "jyn"
-    },
-    {
-      "prompt": "uhhh jubilee"
-    },
-    {
       "prompt": "ad a stability attribute and push the code"
-    },
-    {
-      "prompt": "push it"
     }
   ]
 }

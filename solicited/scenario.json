@@ -2,9 +2,6 @@
   "turns": [
     {
       "prompt": "Bootstrap accepts `--no-capture` but not `--nocapture`. Extend it to support `--nocapture` as an alias."
-    },
-    {
-      "prompt": "idk someone on zulip"
     }
   ]
 }
