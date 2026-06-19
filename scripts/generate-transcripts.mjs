@@ -9,10 +9,16 @@ import { randomUUID } from "node:crypto";
 
 function usage() {
   console.error(`Usage:
-  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--provider claude|codex] [--only name] [--skip name] [--dry-run]
+  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run]
 
 Scenarios are discovered from */scenario.json.
 Repeat --provider to run multiple providers. If omitted, both claude and codex run.`);
+}
+
+function parsePositiveInteger(value, flag) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) throw new Error(`${flag} must be a positive integer`);
+  return parsed;
 }
 
 function parseArgs(argv) {
@@ -21,6 +27,7 @@ function parseArgs(argv) {
     providers: [],
     only: null,
     skips: new Set(),
+    jobs: 1,
     dryRun: false,
   };
 
@@ -30,6 +37,7 @@ function parseArgs(argv) {
     else if (arg === "--provider") args.providers.push(argv[++i]);
     else if (arg === "--only") args.only = argv[++i];
     else if (arg === "--skip") args.skips.add(argv[++i]);
+    else if (arg === "--jobs") args.jobs = parsePositiveInteger(argv[++i], "--jobs");
     else if (arg === "--dry-run") args.dryRun = true;
     else if (arg === "--help" || arg === "-h") {
       usage();
@@ -146,8 +154,7 @@ function collectCodexMarkdown(line, out, state) {
 
 async function runCommand({ command, args }, cwd, dryRun, env = process.env) {
   if (dryRun) {
-    console.error([command, ...args].map(shellQuote).join(" "));
-    return { stdout: "", stderr: "", status: 0 };
+    return { stdout: "", stderr: "", status: 0, dryRunCommand: [command, ...args].map(shellQuote).join(" ") };
   }
 
   return await new Promise((resolve) => {
@@ -173,6 +180,7 @@ async function runScenario(run, args) {
   if (!Array.isArray(run.turns) || run.turns.length === 0) throw new Error(`Run ${run.name} needs turns`);
 
   const transcript = [];
+  const dryRunCommands = [];
   const state = { turnIndex: 0, threadId: null, claudeSessionId: null, claudeSawAssistantText: false };
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
 
@@ -188,6 +196,7 @@ async function runScenario(run, args) {
           : buildCodexCommand(run, turn, state);
 
       const result = await runCommand(command, args.rustRepo, args.dryRun, runEnvironment.env);
+      if (result.dryRunCommand) dryRunCommands.push(result.dryRunCommand);
       if (args.dryRun && run.provider === "codex" && !state.threadId) {
         state.threadId = "DRY_RUN_THREAD_ID";
       }
@@ -217,7 +226,10 @@ async function runScenario(run, args) {
     await runEnvironment.cleanup?.();
   }
 
-  if (args.dryRun) return;
+  if (args.dryRun) {
+    console.error([`\n==> ${run.name} (${run.provider})`, ...dryRunCommands].join("\n"));
+    return;
+  }
 
   const outDir = path.resolve(run.name);
   await mkdir(outDir, { recursive: true });
@@ -247,6 +259,22 @@ async function discoverScenarios(args) {
   return scenarios;
 }
 
+async function runAll(runs, args) {
+  let nextRunIndex = 0;
+  const jobs = Math.min(args.jobs, runs.length);
+
+  async function worker() {
+    while (nextRunIndex < runs.length) {
+      const run = runs[nextRunIndex];
+      nextRunIndex += 1;
+      if (!args.dryRun) console.error(`\n==> ${run.name} (${run.provider})`);
+      await runScenario(run, args);
+    }
+  }
+
+  await Promise.all(Array.from({ length: jobs }, () => worker()));
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (!args.dryRun) {
@@ -257,13 +285,8 @@ async function main() {
 
   if (scenarios.length === 0) throw new Error("No matching scenarios");
 
-  for (const scenario of scenarios) {
-    for (const provider of args.providers) {
-      const run = { ...scenario, provider };
-      console.error(`\n==> ${run.name} (${provider})`);
-      await runScenario(run, args);
-    }
-  }
+  const runs = scenarios.flatMap((scenario) => args.providers.map((provider) => ({ ...scenario, provider })));
+  await runAll(runs, args);
 }
 
 main().catch((error) => {

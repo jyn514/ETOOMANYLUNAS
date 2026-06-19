@@ -18,6 +18,7 @@ Useful flags:
 
 - `--only diagnostics` runs one scenario.
 - `--skip diagnostics` skips one scenario. Repeat it to skip multiple scenarios.
+- `--jobs 4` runs up to four scenario/provider runs at once. Turns within one scenario still run serially.
 - `--dry-run` prints commands without calling the model.
 - `--provider claude|codex` selects a provider. Repeat it to run multiple providers. If omitted, both run.
 
