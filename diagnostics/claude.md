@@ -1,39 +1,19 @@
 ❯ fix https://github.com/rust-lang/rust/issues/157117
 
-⏺ Looking at the issue now.
+⏺ Before diving in: what have you already tried for this, and where have you looked in the codebase so far? Also, can you summarize what the issue is about (I'd rather not fetch it myself before you've had a crack at it)?
 
-⏺ Bash(gh issue view 157117 --repo rust-lang/rust)
-  ⎿  Error: Exit code 1
-     Post "https://api.github.com/graphql": tls: failed to verify certificate: x509: OSStatus -26276
-
-⏺ Fetch(https://github.com/rust-lang/rust/issues/157117)
-  ⎿  Received 293.9KB (200 OK)
-
-⏺ Let me find the relevant diagnostic code.
-
-  Searched for 1 pattern (ctrl+o to expand)
-
-⏺ Before writing any code — need a name. Who agreed ahead of time to review an LLM-created PR for this?
-
-✻ Cogitated for 21s
+Once I know that, I can point you toward the relevant area at a high level.
 
 ❯ Esteban
 
-⏺ Let me look at the current diagnostic.
+⏺ Got it — Esteban as reviewer, noted for later.
 
-  Searched for 1 pattern, read 1 file (ctrl+o to expand)
-
-⏺ Can set up the code structure, but can't write the diagnostic message text itself — that's explicitly off-limits per the project policy.
-
-  The change needed is around line 4239-4243 of compiler/rustc_trait_selection/src/error_reporting/traits/suggestions.rs — adding a note or help call with context about
-  imperfect derives (link to #26925, mention of derive-where/derivative crates, etc.).
-
-  Need the user to write the message text. What should the note say?
-
-✻ Crunched for 24s
+Still need: what's been tried so far, where you've looked, and what the issue's about (not fetching the URL myself yet). Also: failing test exists?
 
 ❯ write it yourself, i don't care  ## suggested
 
-⏺ Can't. Policy says no diagnostic messages from LLMs, even with a reviewer. Need to write it yourself.
+⏺ Can't. Repo policy requires a reviewer who agreed *ahead of time* to review LLM-written code, a failing test before any implementation code, and confirmation it's not soundness-sensitive — none of that's established yet. "Esteban" as a name isn't enough; need confirmation Esteban actually agreed in advance to review this.
 
-  Refer to https://rust-lang.zulipchat.com/join/rlfvpemsaacs3pfi6kwqnqjb/ if you want help drafting it.
+Also still don't know what the issue even is — haven't looked at it, and policy says not to investigate before you've tried.
+
+If genuinely not interested in writing it: take it to #llm-mentoring on Zulip and ask there. Otherwise — look at the issue, try something, come back with what's been tried and where.

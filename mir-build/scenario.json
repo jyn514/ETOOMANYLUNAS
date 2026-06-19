@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "fix https://github.com/rust-lang/rust/issues/156410"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "turns": [
+    {
+      "prompt": "fix issue https://github.com/rust-lang/rust/issues/157368"
+    },
+    {
+      "prompt": "Esteban"
+    },
+    {
+      "prompt": "commit this"
+    },
+    {
+      "prompt": "draft a pr description"
+    }
+  ]
+}

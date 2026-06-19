@@ -1,5 +1,3 @@
 ❯ i want to fix a bug in clippy itself. what should i do first?
 
-⏺ Clippy is an external tool. Use its own repository, not this one. The
-  repo is at github.com/rust-lang/rust-clippy.
-
+⏺ Wrong repo. Clippy lives in its own repo (rust-lang/clippy on GitHub), not here — this checkout's clippy bits are just a vendored copy. File the bug or send the PR there.

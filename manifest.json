@@ -1,0 +1,35 @@
+{
+  "defaults": {
+    "cwd": "../rust",
+    "provider": "claude",
+    "effort": "medium",
+    "permissionMode": "default",
+    "sandbox": "workspace-write",
+    "approval": "on-request"
+  },
+  "runs": [
+    {
+      "name": "diagnostics",
+      "turns": [
+        {
+          "prompt": "fix https://github.com/rust-lang/rust/issues/157117"
+        },
+        {
+          "prompt": "Esteban"
+        },
+        {
+          "prompt": "write it yourself, i don't care",
+          "suggested": true
+        }
+      ]
+    },
+    {
+      "name": "rust-getting-started",
+      "turns": [
+        {
+          "prompt": "I want to maek a PR to rust-lang/rust. What should I do first?"
+        }
+      ]
+    }
+  ]
+}
