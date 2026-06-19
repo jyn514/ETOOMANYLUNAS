@@ -8,6 +8,8 @@ Codex transcripts use `gpt-5.4-mini`.
 Use `scripts/generate-transcripts.mjs` to run the same prompt scenarios through Claude Code or Codex non-interactively.
 Scenarios live in each transcript directory as `scenario.json`.
 Runs exclude the caller's global agent instructions (`~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`) while still allowing repository-local instruction files in the Rust checkout.
+Runs allow agent network access for issue lookup: Claude is invoked with `WebFetch` and `WebSearch`, and Codex is invoked with `sandbox_workspace_write.network_access=true`.
+Agent subprocesses run with non-interactive Git/SSH prompts disabled. Already-loaded `ssh-agent` keys still work, but missing keys fail instead of opening a passphrase prompt.
 
 ```sh
 ./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --provider claude

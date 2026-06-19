@@ -65,7 +65,20 @@ function buildClaudeCommand(run, turn, state) {
   const settings = JSON.stringify({
     claudeMdExcludes: [path.join(claudeConfigDir, "CLAUDE.md")],
   });
-  const args = ["-p", "--settings", settings, "--output-format", "stream-json", "--verbose", "--model", "sonnet", "--effort", "medium"];
+  const args = [
+    "-p",
+    "--settings",
+    settings,
+    "--allowedTools",
+    "WebFetch,WebSearch",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--model",
+    "sonnet",
+    "--effort",
+    "medium",
+  ];
 
   if (!state.claudeSessionId) state.claudeSessionId = randomUUID();
   if (state.turnIndex === 0) args.push("--session-id", state.claudeSessionId);
@@ -76,7 +89,16 @@ function buildClaudeCommand(run, turn, state) {
 }
 
 function buildCodexCommand(run, turn, state) {
-  const args = ["exec", "--json", "--model", "gpt-5.4-mini", "--sandbox", "workspace-write"];
+  const args = [
+    "exec",
+    "--json",
+    "--model",
+    "gpt-5.4-mini",
+    "--sandbox",
+    "workspace-write",
+    "--config",
+    "sandbox_workspace_write.network_access=true",
+  ];
 
   if (state.threadId) args.push("resume", state.threadId);
 
@@ -149,7 +171,10 @@ function collectCodexMarkdown(line, out, state) {
   if (event.type !== "item.completed" || !item) return;
 
   if (item.type === "agent_message" && item.text?.trim()) {
-    out.push(`⏺ ${item.text.trim()}`);
+    const text = item.text.trim();
+    if (state.codexAgentMessageTexts.has(text)) return;
+    state.codexAgentMessageTexts.add(text);
+    out.push(`⏺ ${text}`);
   } else if (item.type === "command_execution") {
     out.push(`⏺ Bash(${item.command})`);
   } else if (item.type === "file_change") {
@@ -190,12 +215,19 @@ async function runScenario(run, args) {
 
   const transcript = [];
   const dryRunCommands = [];
-  const state = { turnIndex: 0, threadId: null, claudeSessionId: null, claudeSawAssistantText: false };
+  const state = {
+    turnIndex: 0,
+    threadId: null,
+    claudeSessionId: null,
+    claudeSawAssistantText: false,
+    codexAgentMessageTexts: new Set(),
+  };
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
 
   try {
     for (const turn of run.turns) {
       state.claudeSawAssistantText = false;
+      state.codexAgentMessageTexts.clear();
       const suffix = turn.suggested ? "  ## suggested" : "";
       transcript.push(`❯ ${turn.prompt}${suffix}`, "");
 
