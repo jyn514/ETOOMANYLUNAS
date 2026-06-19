@@ -1,7 +1,24 @@
 ❯ fix https://github.com/rust-lang/rust-clippy/issues/17143
 
-⏺ This repo’s instructions say not to make Clippy fixes through `rust-lang/rust`; they should be done in the `rust-lang/rust-clippy` repository.
+⏺ I’m reading the linked issue first, then I’ll narrow this to the relevant Clippy area and stop there. What have you already tried, and where have you looked?
+⏺ WebSearch
+⏺ The issue is a false positive in Clippy’s `suspicious_operation_groupings` lint.
 
-Before I investigate or suggest a concrete fix: what have you already tried, and where have you looked in Clippy? For this kind of issue, useful starting points are usually the relevant lint implementation under Clippy’s `clippy_lints` crate and the UI tests for that lint.
+The reproducer is:
 
-Also, because this is Rust project work with the LLM policy in effect: I can help you learn, review your attempt, and point you around first. I can only write implementation code after you name the reviewer who agreed ahead of time to review an LLM-created PR, and after there is a failing test.
+```rust
+#![warn(clippy::suspicious_operation_groupings)]
+fn f(_: char) -> bool { true }
+fn g(_: char) -> bool { true }
+fn h() {
+    let x = 'b';
+    let y = 'r';
+    if f(x) && g(y) && x != y {}
+}
+```
+
+Clippy warns and suggests `f(x) && g(x)`, but the reporter expects no lint because `x != y` makes the grouping look intentional.
+
+What have you already tried, and where have you looked?
+
+High-level starting point: the `clippy_lints` crate, especially the lint implementation for `suspicious_operation_groupings`.
