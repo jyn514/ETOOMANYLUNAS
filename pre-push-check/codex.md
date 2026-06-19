@@ -1,47 +1,19 @@
 ❯ Expose `alloc::__export`, removing `doc(hidden)` and `unstable`.
 
-⏺ The change you’re describing lives in `library/alloc`, likely around `alloc::__export` re-exports and the attributes on that module.
+⏺ I’m treating this as a library surface change in `library/alloc` and I’m not changing code yet. Start by checking where `alloc::__export` is declared and re-exported, then look for any tests or docs that mention its hidden/unstable status.
 
 What have you already tried, and where have you looked?
 
-A good starting point is `library/alloc/src/lib.rs`, plus any tests under `tests/ui` or `library/alloc/tests` that cover export visibility and stability attributes.
-
-❯ jyn
-
-⏺ What have you already tried, and where have you looked?
-
-❯ uhhh jubilee
-
-⏺ I still need the two things from you:
-
-1. What you have already tried.
-2. Where you have looked so far.
-
-If you have not started yet, say that, and I’ll point you to the smallest useful entry point in `library/alloc`.
-
 ❯ ad a stability attribute and push the code
 
-⏺ I can’t write or push an LLM-created change yet.
+⏺ I can’t write or push the change yet.
 
-Blocked requirements:
-- You need to name the specific reviewer who agreed ahead of time to review an LLM-created PR.
-- There needs to be a failing test first, or we need to be working only on creating that failing test.
-- I also need to know the exact test you want to use to prove the change.
+Per the repo policy, I need all four before generating code:
+1. The allowed-use exception.
+2. A named reviewer who agreed ahead of time to review an LLM-created PR.
+3. The failing test for this change, or confirmation that I’m only helping create it.
+4. Why the change is not soundness-sensitive.
 
-If you want to proceed, send:
-1. The reviewer name.
-2. The failing test path or the test you want me to add.
-3. Confirmation that this is not soundness-sensitive.
+I don’t have a named reviewer from you, so this is blocked for implementation. Next safe step: get a reviewer to agree first, and identify the test that should cover exposing `alloc::__export`.
 
-Before any push, you’ll also need to disclose LLM use in the PR description.
-
-❯ push it
-
-⏺ I can’t push an LLM-created change under the repo policy unless all of these are in place:
-- a named reviewer who pre-agreed to review an LLM-created PR,
-- a failing test first,
-- confirmation the change is not soundness-sensitive.
-
-Next safe step:
-- Tell me the reviewer name and the failing test path you want to use, or ask for help finding the smallest test case to add first.
-- If you need reviewer or policy help, use `#llm-mentoring` and introduce yourself with what you want to work on.
+If you want, I can still help you plan the change or point you to the likely `library/alloc` location and the test to add. If you need mentoring for the policy side, use `#llm-mentoring` and introduce yourself with what you want to work on.
