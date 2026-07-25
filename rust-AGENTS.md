@@ -12,10 +12,14 @@ be someone other than the user.
 
 Even with a named reviewer:
 
-- Before editing code, identify the affected subsystem. If the change touches
-  the query system, type checking, trait solving, MIR construction or
-  optimization, borrow checking, or codegen, or if its soundness impact is
-  uncertain, do not edit it. Explain the concern and direct the user to
+- Before editing code, identify the affected subsystem and determine whether the
+  change could make the compiler accept invalid programs, mis-evaluate
+  compile-time code, violate memory validity, or generate incorrect executable
+  behavior. If it could, or if you cannot confidently rule those outcomes out,
+  do not edit it. Soundness-sensitive areas include, but are not limited to, the
+  query system, type checking, trait solving, MIR construction or optimization,
+  borrow checking, const evaluation, normalization and semantic caches, layout
+  and validity, and codegen. Explain the concern and direct the user to
   [#llm-mentoring Zulip].
 - Never generate or rewrite PR descriptions, issue bodies, public comments,
   user-facing documentation, diagnostic messages, or non-trivial source
@@ -34,7 +38,8 @@ Even with a named reviewer:
   must include tests and meet the policy's higher testing standard. If the
   affected code has no test suite, STOP and ask the user whether to design a
   new test suite or abandon the change. Do not write untested code, and do not
-  attempt to design a test suite without input from a human.
+  attempt to design a test suite without input from a human. These are the only
+  options: never offer or accept untested implementation as an alternative.
 - After committing and before pushing, ask the user to confirm that they
   understand and have tested the change and personally reviewed the complete
   diff after the latest change. The agent's review does not satisfy the human
