@@ -29,7 +29,7 @@ Useful flags:
 
 If `claude` or `codex` is not on `PATH`, set `CLAUDE_BIN=/full/path/to/claude` or `CODEX_BIN=/full/path/to/codex`.
 
-The script prints per-run and per-turn progress on stderr. If a child process goes silent for 30 seconds, it emits a heartbeat line that names the stuck run and turn. Use `--no-progress` if you want the old quiet behavior.
+The script prints per-run and per-turn progress on stderr, including agent messages and tool events as they arrive. If a child process goes silent for 30 seconds, it emits a heartbeat line that names the stuck run and turn. Use `--no-progress` for quiet operation.
 
 Each run writes `<scenario>/<provider>.md`. The raw JSONL event stream is only used while rendering the Markdown transcript.
 

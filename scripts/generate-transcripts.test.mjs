@@ -48,11 +48,13 @@ if (process.env.FAIL_PROVIDER === "1") process.exit(7);
 const fixture = readFileSync("fixture.txt", "utf8").trim();
 const command = readFileSync("command.txt", "utf8").trim();
 const subject = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
+const sqliteIsIsolated =
+  process.env.CODEX_SQLITE_HOME === process.env.CODEX_HOME + ${JSON.stringify(path.sep)} + "sqlite";
 writeFileSync("agent-change.txt", fixture);
 console.log(JSON.stringify({ type: "thread.started", thread_id: "fixture-thread" }));
 console.log(JSON.stringify({
   type: "item.completed",
-  item: { type: "agent_message", text: [fixture, command, subject].join("|") }
+  item: { type: "agent_message", text: [fixture, command, subject, sqliteIsIsolated].join("|") }
 }));
 `,
   );
@@ -114,8 +116,8 @@ test("setup state is isolated, committed, and visible to parallel runs", async (
 
   const result = runGenerator({ ...fixture, extraArgs: ["--jobs", "2"] });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(await readFile(path.join(fixture.scenarios, "alpha", "codex.md"), "utf8"), /alpha\|command\|Fixture alpha/);
-  assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta/);
+  assert.match(await readFile(path.join(fixture.scenarios, "alpha", "codex.md"), "utf8"), /alpha\|command\|Fixture alpha\|true/);
+  assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta\|true/);
 
   assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
   await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
@@ -144,6 +146,18 @@ test("a provider failure is recorded and its worktree is removed", async (t) => 
     /codex exited with status 7/,
   );
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
+});
+
+test("progress mode renders provider events to stderr without duplicating the transcript", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "live");
+
+  const result = runGenerator({ ...fixture, extraArgs: ["--progress"] });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /⏺ live\|command\|Fixture live\|true/);
+
+  const transcript = await readFile(path.join(fixture.scenarios, "live", "codex.md"), "utf8");
+  assert.equal(transcript.match(/live\|command\|Fixture live\|true/g)?.length, 1);
 });
 
 test("invalid setup schemas fail before creating a worktree", async (t) => {

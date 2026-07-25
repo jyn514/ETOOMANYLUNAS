@@ -153,10 +153,19 @@ async function prepareRunEnvironment(provider, dryRun) {
 
   const codexHome = process.env.CODEX_HOME ?? path.join(homedir(), ".codex");
   const isolatedCodexHome = await mkdtemp(path.join(tmpdir(), "transcript-codex-home-"));
-  await symlinkChildrenExcept(codexHome, isolatedCodexHome, new Set(["AGENTS.md", "AGENTS.override.md"]));
+  const isolatedSqliteHome = path.join(isolatedCodexHome, "sqlite");
+  await symlinkChildrenExcept(
+    codexHome,
+    isolatedCodexHome,
+    new Set(["AGENTS.md", "AGENTS.override.md", "sqlite"]),
+  );
+  await mkdir(isolatedSqliteHome);
 
   return {
-    env: agentEnvironment({ CODEX_HOME: isolatedCodexHome }),
+    env: agentEnvironment({
+      CODEX_HOME: isolatedCodexHome,
+      CODEX_SQLITE_HOME: isolatedSqliteHome,
+    }),
     cleanup: async () => {
       await rm(isolatedCodexHome, { recursive: true, force: true });
     },
@@ -206,7 +215,14 @@ function collectCodexMarkdown(line, out, state) {
   }
 }
 
-async function runCommand({ command, args }, cwd, dryRun, env = process.env, progressLabel = null) {
+async function runCommand(
+  { command, args },
+  cwd,
+  dryRun,
+  env = process.env,
+  progressLabel = null,
+  onStdoutLine = null,
+) {
   if (dryRun) {
     return { stdout: "", stderr: "", status: 0, dryRunCommand: [command, ...args].map(shellQuote).join(" ") };
   }
@@ -214,6 +230,7 @@ async function runCommand({ command, args }, cwd, dryRun, env = process.env, pro
   return await new Promise((resolve) => {
     const child = spawn(command, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
+    let pendingStdout = "";
     let stderr = "";
     let lastOutputAt = Date.now();
     const startedAt = lastOutputAt;
@@ -230,7 +247,16 @@ async function runCommand({ command, args }, cwd, dryRun, env = process.env, pro
 
     child.stdout.on("data", (data) => {
       lastOutputAt = Date.now();
-      stdout += data.toString();
+      const text = data.toString();
+      stdout += text;
+      if (onStdoutLine) {
+        pendingStdout += text;
+        const lines = pendingStdout.split("\n");
+        pendingStdout = lines.pop();
+        for (const line of lines) {
+          if (line) onStdoutLine(line);
+        }
+      }
     });
     child.stderr.on("data", (data) => {
       lastOutputAt = Date.now();
@@ -243,6 +269,7 @@ async function runCommand({ command, args }, cwd, dryRun, env = process.env, pro
     });
     child.on("close", (status) => {
       clearInterval(heartbeat);
+      if (onStdoutLine && pendingStdout) onStdoutLine(pendingStdout);
       resolve({ stdout, stderr, status });
     });
   });
@@ -406,18 +433,31 @@ async function runScenario(run, args) {
           ? buildClaudeCommand(run, turn, state)
           : buildCodexCommand(run, turn, state);
 
-      const result = await runCommand(command, runWorktree.cwd, args.dryRun, runEnvironment.env, args.progress && !args.dryRun ? progressLabel : null);
-      if (result.dryRunCommand) dryRunCommands.push(result.dryRunCommand);
-      if (args.dryRun && run.provider === "codex" && !state.threadId) {
-        state.threadId = "DRY_RUN_THREAD_ID";
-      }
-      for (const line of result.stdout.split("\n").filter(Boolean)) {
+      const collectOutputLine = (line) => {
+        const previousLength = transcript.length;
         try {
           if (run.provider === "claude") collectClaudeMarkdown(line, transcript, state);
           else collectCodexMarkdown(line, transcript, state);
         } catch {
           transcript.push(line);
         }
+        if (args.progress) {
+          for (const renderedLine of transcript.slice(previousLength)) {
+            process.stderr.write(`${renderedLine}\n`);
+          }
+        }
+      };
+      const result = await runCommand(
+        command,
+        runWorktree.cwd,
+        args.dryRun,
+        runEnvironment.env,
+        args.progress && !args.dryRun ? progressLabel : null,
+        args.dryRun ? null : collectOutputLine,
+      );
+      if (result.dryRunCommand) dryRunCommands.push(result.dryRunCommand);
+      if (args.dryRun && run.provider === "codex" && !state.threadId) {
+        state.threadId = "DRY_RUN_THREAD_ID";
       }
 
       if (result.status !== 0) {
