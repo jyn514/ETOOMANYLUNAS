@@ -12,41 +12,55 @@ be someone other than the user.
 
 Even with a named reviewer:
 
-- Before editing code, identify the affected subsystem and determine whether the
-  change could make the compiler accept invalid programs, mis-evaluate
-  compile-time code, violate memory validity, or generate incorrect executable
-  behavior. If it could, or if you cannot confidently rule those outcomes out,
-  STOP the implementation task. Do not continue to test planning, patch design,
-  or implementation. Soundness-sensitive areas include, but are not limited to,
-  the query system, type checking, trait solving, MIR construction or
-  optimization, borrow checking, const evaluation, normalization and semantic
-  caches, layout and validity, and codegen. Explain the concern and direct the
-  user to [#llm-mentoring Zulip].
-- Never generate or rewrite PR descriptions, issue bodies, public comments,
-  user-facing documentation, diagnostic messages, or non-trivial source
-  comments. Tell the user which category is prohibited and that they must
-  author it themselves. Non-trivial source comments include doc comments,
-  safety comments, and multiple paragraphs of ordinary comments; a comment is
-  trivial only if there is no meaningfully different way to write it. Agent
-  instructions such as `CLAUDE.md`, `AGENTS.md`, and skills are not user-facing
-  documentation and may be edited by an agent. The agent may explain
-  conceptually what prohibited text needs to communicate, but must not suggest
-  wording that could be pasted into the prohibited category.
-- Before implementation, add or find a failing test and confirm that it fails.
-  Test-only work is allowed at this stage, but permission to create a regression
-  test is not permission to change implementation code.
-  After implementation, confirm that the same test passes. Every LLM-created PR
-  must include tests and meet the policy's higher testing standard. If the
-  affected code has no test suite, STOP and ask the user whether to design a
-  new test suite or abandon the change. Do not write untested code, and do not
-  attempt to design a test suite without input from a human. These are the only
-  options: never offer or accept untested implementation as an alternative.
-- After committing and before pushing, ask the user to confirm that they
-  understand and have tested the change and personally reviewed the complete
-  diff after the latest change. The agent's review does not satisfy the human
-  self-review requirement. Then remind the user to disclose the LLM use in the
-  PR description. This check and reminder are required once during that
-  interval, not once after committing and again before pushing.
+### Soundness
+
+Before editing code, identify the affected subsystem and determine whether the
+change could make the compiler accept invalid programs, mis-evaluate
+compile-time code, violate memory validity, or generate incorrect executable
+behavior. If it could, or if you cannot confidently rule those outcomes out,
+STOP the implementation task. Do not continue to test planning, patch design,
+or implementation. Soundness-sensitive areas include, but are not limited to,
+the query system, type checking, trait solving, MIR construction or
+optimization, borrow checking, const evaluation, normalization and semantic
+caches, layout and validity, and codegen. Explain the concern and direct the
+user to [#llm-mentoring Zulip].
+
+### Prohibited text
+
+Never generate or rewrite PR descriptions, issue bodies, public comments,
+user-facing documentation, diagnostic messages, or non-trivial source comments.
+Tell the user which category is prohibited and that they must author it
+themselves. Non-trivial source comments include doc comments, safety comments,
+and multiple paragraphs of ordinary comments; a comment is trivial only if
+there is no meaningfully different way to write it. Agent instructions such as
+`CLAUDE.md`, `AGENTS.md`, and skills are not user-facing documentation and may
+be edited by an agent. The agent may explain conceptually what prohibited text
+needs to communicate, but must not suggest wording that could be pasted into the
+prohibited category.
+
+### Testing
+
+Before implementation, add or find a failing test. Run it and observe the
+expected failure before any implementation edit; do not create the test and edit
+the implementation in the same step. Test-only work is allowed at this stage,
+but permission to create a regression test is not permission to change
+implementation code.
+
+After implementation, confirm that the same test passes. Every LLM-created PR
+must include tests and meet the policy's higher testing standard. If the
+affected code has no test suite, STOP and ask the user whether to design a new
+test suite or abandon the change. Do not write untested code, and do not attempt
+to design a test suite without input from a human. These are the only options:
+never offer or accept untested implementation as an alternative.
+
+### Before pushing
+
+After committing and before pushing, ask the user to confirm that they
+understand and have tested the change and personally reviewed the complete diff
+after the latest change. The agent's review does not satisfy the human
+self-review requirement. Then remind the user to disclose the LLM use in the PR
+description. This check and reminder are required once during that interval,
+not once after committing and again before pushing.
 
 LLM-assisted contributions must be disclosed as described in the
 [policy's disclosure requirements]. Lying about or concealing LLM use is a
@@ -56,12 +70,14 @@ implement or review it. The agent must not draft or rewrite the disclosure; the
 user must author it.
 
 Reading, explaining, summarizing, reviewing, and suggesting possible solutions
-for the user to implement from scratch are allowed.
+for the user to implement from scratch are allowed. These read-only activities
+do not reopen an implementation task stopped by a rule above.
 
-Follow the rustc-dev-guide's [LLM guidance]. Before a mass rename or mechanical
-rewrite, look for an existing formatter, linter, or syntax-aware rewrite tool
-and use it when available. If none exists, explain that direct LLM rewriting is
-discouraged and ask the user before proceeding.
+Follow the rustc-dev-guide's [LLM guidance]. For a mass rename or mechanical
+rewrite otherwise permitted by this policy, look for an existing formatter,
+linter, or syntax-aware rewrite tool and use it when available. If none exists,
+explain that direct LLM rewriting is discouraged and ask the user before
+proceeding.
 
 If a request conflicts with these rules, direct the user to the
 [#llm-mentoring Zulip] for help.
@@ -86,8 +102,8 @@ Use the in-tree rustc-dev-guide for:
 - [external repositories] and where changes to submodules and subtrees belong;
 - the [contribution process], including GitHub and PR conventions.
 
-When code needs a comment, explain why the code or decision exists rather than
-restating what the code does.
+For source comments the policy permits an agent to write, explain why the code
+or decision exists rather than restating what the code does.
 
 Before modifying a subtree, submodule, or code under `src/tools`, identify its
 owning repository using
