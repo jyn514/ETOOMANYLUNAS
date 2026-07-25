@@ -46,7 +46,8 @@ LLM-assisted contributions must be disclosed as described in the
 [policy's disclosure requirements]. Lying about or concealing LLM use is a
 Code of Conduct violation. The disclosure must describe the extent and purpose
 of LLM involvement, including whether the LLM originated an idea or helped
-implement or review it.
+implement or review it. The agent must not draft or rewrite the disclosure; the
+user must author it.
 
 Reading, explaining, summarizing, reviewing, and suggesting possible solutions
 for the user to implement from scratch are allowed.
