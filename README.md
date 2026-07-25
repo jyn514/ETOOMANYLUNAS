@@ -11,8 +11,11 @@ Runs exclude the caller's global agent instructions (`~/.claude/CLAUDE.md` and `
 Runs allow agent network access for issue lookup: Claude is invoked with `WebFetch` and `WebSearch`, and Codex is invoked with `sandbox_workspace_write.network_access=true`.
 Agent subprocesses run with non-interactive Git/SSH prompts disabled. SSH agent access is cleared, and Git/SSH askpass helpers are forced to fail fast instead of opening a prompt.
 Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` only if you want to restore inherited SSH agent behavior.
-Each scenario/provider run uses a disposable Git worktree created from the Rust checkout's `HEAD`.
-This keeps parallel runs independent and leaves the supplied checkout unchanged, but uncommitted changes in that checkout are not included.
+The runner snapshots the Rust checkout's current repository-local agent instructions (`CLAUDE.md`,
+`AGENTS.md`, `.claude`, `.codex`, and `.agents`), including uncommitted and non-ignored untracked
+files. It then creates a disposable Git worktree for each scenario/provider run. Other checkout
+changes and submodule contents are not included. This keeps parallel runs independent and leaves the
+supplied checkout unchanged.
 
 ```sh
 ./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --provider claude

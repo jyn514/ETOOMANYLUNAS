@@ -290,11 +290,101 @@ async function runCheckedCommand(command, cwd, env, description) {
   return result;
 }
 
+async function snapshotInputRevision(args, env) {
+  const instructionPaths = ["CLAUDE.md", "AGENTS.md", ".claude", ".codex", ".agents"];
+  const tempDir = await mkdtemp(path.join(tmpdir(), "transcript-input-index-"));
+  const indexPath = path.join(tempDir, "index");
+  const snapshotEnv = {
+    ...env,
+    GIT_INDEX_FILE: indexPath,
+    GIT_AUTHOR_NAME: "Transcript Fixture",
+    GIT_AUTHOR_EMAIL: "transcript-fixture@invalid",
+    GIT_COMMITTER_NAME: "Transcript Fixture",
+    GIT_COMMITTER_EMAIL: "transcript-fixture@invalid",
+  };
+
+  try {
+    await runCheckedCommand(
+      { command: "git", args: ["-C", args.rustRepo, "read-tree", "HEAD"] },
+      args.rustRepo,
+      snapshotEnv,
+      "input snapshot initialization",
+    );
+    const trackedInstructions = await runCheckedCommand(
+      {
+        command: "git",
+        args: ["-C", args.rustRepo, "ls-files", "-z", "--", ...instructionPaths],
+      },
+      args.rustRepo,
+      snapshotEnv,
+      "input snapshot instruction discovery",
+    );
+    const trackedPaths = trackedInstructions.stdout.split("\0").filter(Boolean);
+    const presentInstructions = (
+      await Promise.all(
+        instructionPaths.map(async (instructionPath) => {
+          const present = await stat(path.join(args.rustRepo, instructionPath)).catch(() => null);
+          const tracked = trackedPaths.some(
+            (trackedPath) => trackedPath === instructionPath || trackedPath.startsWith(`${instructionPath}/`),
+          );
+          return present || tracked ? instructionPath : null;
+        }),
+      )
+    ).filter(Boolean);
+    if (presentInstructions.length > 0) {
+      await runCheckedCommand(
+        {
+          command: "git",
+          args: ["-C", args.rustRepo, "add", "--all", "--", ...presentInstructions],
+        },
+        args.rustRepo,
+        snapshotEnv,
+        "input snapshot staging",
+      );
+    }
+    const tree = await runCheckedCommand(
+      { command: "git", args: ["-C", args.rustRepo, "write-tree"] },
+      args.rustRepo,
+      snapshotEnv,
+      "input snapshot tree creation",
+    );
+    const headTree = await runCheckedCommand(
+      { command: "git", args: ["-C", args.rustRepo, "rev-parse", "HEAD^{tree}"] },
+      args.rustRepo,
+      snapshotEnv,
+      "input snapshot comparison",
+    );
+    if (tree.stdout.trim() === headTree.stdout.trim()) return "HEAD";
+
+    const commit = await runCheckedCommand(
+      {
+        command: "git",
+        args: [
+          "-C",
+          args.rustRepo,
+          "commit-tree",
+          tree.stdout.trim(),
+          "-p",
+          "HEAD",
+          "-m",
+          "Snapshot transcript input",
+        ],
+      },
+      args.rustRepo,
+      snapshotEnv,
+      "input snapshot commit creation",
+    );
+    return commit.stdout.trim();
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 async function prepareRunWorktree(run, args, env, dryRunCommands) {
   const placeholder = "$RUN_WORKTREE";
   const addCommand = {
     command: "git",
-    args: ["-C", args.rustRepo, "worktree", "add", "--detach", placeholder, "HEAD"],
+    args: ["-C", args.rustRepo, "worktree", "add", "--detach", placeholder, args.inputRevision],
   };
 
   if (args.dryRun) {
@@ -316,7 +406,7 @@ async function prepareRunWorktree(run, args, env, dryRunCommands) {
   const worktree = path.join(tempDir, "checkout");
   const actualAddCommand = {
     ...addCommand,
-    args: ["-C", args.rustRepo, "worktree", "add", "--detach", worktree, "HEAD"],
+    args: ["-C", args.rustRepo, "worktree", "add", "--detach", worktree, args.inputRevision],
   };
 
   try {
@@ -354,7 +444,10 @@ async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
   if (!run.setup) return;
 
   if (run.setup.patch) {
-    const command = { command: "git", args: ["apply", run.setup.patch] };
+    const command = {
+      command: "git",
+      args: ["apply", ...(run.setup.commit ? ["--index"] : []), run.setup.patch],
+    };
     if (args.dryRun) dryRunCommands.push(commandText(command));
     else await runCheckedCommand(command, cwd, env, `${run.name} (${run.provider}) setup patch`);
   }
@@ -373,7 +466,7 @@ async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
   }
 
   if (run.setup.commit) {
-    const addCommand = { command: "git", args: ["add", "--all"] };
+    const addCommand = { command: "git", args: ["add", "--all", "--", "$SETUP_CHANGED_PATHS"] };
     const commitCommand = {
       command: "git",
       args: [
@@ -390,9 +483,44 @@ async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
       ],
     };
     if (args.dryRun) {
-      dryRunCommands.push(commandText(addCommand), commandText(commitCommand));
+      if (run.setup.commands?.length > 0) dryRunCommands.push(commandText(addCommand));
+      dryRunCommands.push(commandText(commitCommand));
     } else {
-      await runCheckedCommand(addCommand, cwd, env, `${run.name} (${run.provider}) setup staging`);
+      if (run.setup.commands?.length > 0) {
+        const trackedChanges = await runCheckedCommand(
+          {
+            command: "git",
+            args: ["diff", "--name-only", "-z", "--ignore-submodules=dirty", "HEAD", "--"],
+          },
+          cwd,
+          env,
+          `${run.name} (${run.provider}) setup change discovery`,
+        );
+        const untrackedChanges = await runCheckedCommand(
+          { command: "git", args: ["ls-files", "--others", "--exclude-standard", "-z"] },
+          cwd,
+          env,
+          `${run.name} (${run.provider}) untracked setup change discovery`,
+        );
+        const changedPaths = [
+          ...new Set(
+            `${trackedChanges.stdout}${untrackedChanges.stdout}`
+              .split("\0")
+              .filter(Boolean),
+          ),
+        ];
+        if (changedPaths.length > 0) {
+          await runCheckedCommand(
+            {
+              command: "git",
+              args: ["add", "--all", "--", ...changedPaths.map((changedPath) => `:(top,literal)${changedPath}`)],
+            },
+            cwd,
+            env,
+            `${run.name} (${run.provider}) setup staging`,
+          );
+        }
+      }
       await runCheckedCommand(commitCommand, cwd, env, `${run.name} (${run.provider}) setup commit`);
     }
   }
@@ -584,6 +712,7 @@ async function runAll(runs, args) {
 
 async function main() {
   const args = parseArgs(process.argv);
+  args.inputRevision = "$INPUT_REVISION";
   if (!args.dryRun) {
     const rustRepoStat = await stat(args.rustRepo).catch(() => null);
     if (!rustRepoStat?.isDirectory()) throw new Error(`--rust-repo is not a directory: ${args.rustRepo}`);
@@ -594,6 +723,7 @@ async function main() {
       agentEnvironment(),
     );
     if (gitCheck.status !== 0) throw new Error(`--rust-repo is not a Git repository: ${args.rustRepo}`);
+    args.inputRevision = await snapshotInputRevision(args, agentEnvironment());
   }
   const scenarios = await discoverScenarios(args);
 

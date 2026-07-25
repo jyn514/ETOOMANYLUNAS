@@ -34,6 +34,7 @@ async function makeFixture(t) {
   git(rustRepo, "init");
   git(rustRepo, "config", "user.name", "Test User");
   git(rustRepo, "config", "user.email", "test@example.invalid");
+  git(rustRepo, "config", "status.showUntrackedFiles", "normal");
   await writeFile(path.join(rustRepo, "base.txt"), "base\n");
   git(rustRepo, "add", "base.txt");
   git(rustRepo, "commit", "-m", "Base");
@@ -42,19 +43,22 @@ async function makeFixture(t) {
   await writeFile(
     fakeCodex,
     `#!/usr/bin/env node
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 if (process.env.FAIL_PROVIDER === "1") process.exit(7);
 const fixture = readFileSync("fixture.txt", "utf8").trim();
 const command = readFileSync("command.txt", "utf8").trim();
 const subject = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
+const callerState = ["base.txt", "AGENTS.md", ".claude/rules.md"]
+  .map((file) => existsSync(file) ? readFileSync(file, "utf8").trim() : "missing")
+  .join(",");
 const sqliteIsIsolated =
   process.env.CODEX_SQLITE_HOME === process.env.CODEX_HOME + ${JSON.stringify(path.sep)} + "sqlite";
 writeFileSync("agent-change.txt", fixture);
 console.log(JSON.stringify({ type: "thread.started", thread_id: "fixture-thread" }));
 console.log(JSON.stringify({
   type: "item.completed",
-  item: { type: "agent_message", text: [fixture, command, subject, sqliteIsIsolated].join("|") }
+  item: { type: "agent_message", text: [fixture, command, subject, sqliteIsIsolated, callerState].join("|") }
 }));
 `,
   );
@@ -66,14 +70,15 @@ console.log(JSON.stringify({
 async function writeScenario(scenarios, name, command = "printf command > command.txt") {
   const scenarioDir = path.join(scenarios, name);
   await mkdir(scenarioDir);
+  const setup = {
+    patch: "setup.patch",
+    commit: { message: `Fixture ${name}` },
+  };
+  if (command !== null) setup.commands = [command];
   await writeFile(
     path.join(scenarioDir, "scenario.json"),
     JSON.stringify({
-      setup: {
-        patch: "setup.patch",
-        commands: [command],
-        commit: { message: `Fixture ${name}` },
-      },
+      setup,
       turns: [{ prompt: `Run ${name}` }],
     }),
   );
@@ -121,6 +126,47 @@ test("setup state is isolated, committed, and visible to parallel runs", async (
 
   assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
   await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
+  assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
+});
+
+test("runs include current agent instructions but not unrelated checkout changes", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "dirty-input");
+  await writeFile(path.join(fixture.rustRepo, "base.txt"), "modified\n");
+  await writeFile(path.join(fixture.rustRepo, "AGENTS.md"), "agent instructions\n");
+  await mkdir(path.join(fixture.rustRepo, ".claude"));
+  await writeFile(path.join(fixture.rustRepo, ".claude", "rules.md"), "claude instructions\n");
+
+  const result = runGenerator({ ...fixture });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    await readFile(path.join(fixture.scenarios, "dirty-input", "codex.md"), "utf8"),
+    /base,agent instructions,claude instructions/,
+  );
+  assert.equal(
+    git(fixture.rustRepo, "status", "--porcelain"),
+    "M base.txt\n?? .claude/\n?? AGENTS.md",
+  );
+  assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
+});
+
+test("snapshotting ignores broken submodule worktrees", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "broken-submodule");
+  const head = git(fixture.rustRepo, "rev-parse", "HEAD");
+  git(fixture.rustRepo, "update-index", "--add", "--cacheinfo", `160000,${head},library/backtrace`);
+  git(fixture.rustRepo, "commit", "-m", "Add submodule gitlink");
+  const submodule = path.join(fixture.rustRepo, "library", "backtrace");
+  await mkdir(submodule, { recursive: true });
+  await writeFile(path.join(submodule, ".git"), "gitdir: ../../../missing/modules/library/backtrace\n");
+  await writeFile(path.join(fixture.rustRepo, "AGENTS.md"), "agent instructions\n");
+
+  const result = runGenerator({ ...fixture });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    await readFile(path.join(fixture.scenarios, "broken-submodule", "codex.md"), "utf8"),
+    /base,agent instructions,missing/,
+  );
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
 });
 
@@ -177,7 +223,7 @@ test("invalid setup schemas fail before creating a worktree", async (t) => {
 
 test("dry runs include setup commands without requiring or changing a repository", async (t) => {
   const fixture = await makeFixture(t);
-  await writeScenario(fixture.scenarios, "dry");
+  await writeScenario(fixture.scenarios, "dry", null);
 
   const missingRepo = path.join(fixture.root, "missing-rust");
   const result = runGenerator({
@@ -186,8 +232,9 @@ test("dry runs include setup commands without requiring or changing a repository
     extraArgs: ["--dry-run"],
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /worktree.*add.*\$RUN_WORKTREE/);
-  assert.match(result.stderr, /git.*apply.*setup\.patch/);
+  assert.match(result.stderr, /worktree.*add.*\$RUN_WORKTREE.*\$INPUT_REVISION/);
+  assert.match(result.stderr, /git.*apply.*--index.*setup\.patch/);
+  assert.doesNotMatch(result.stderr, /'git' 'add' '--all'/);
   assert.match(result.stderr, /git.*commit.*Fixture dry/);
   await assert.rejects(readFile(path.join(fixture.scenarios, "dry", "codex.md")), { code: "ENOENT" });
 });
