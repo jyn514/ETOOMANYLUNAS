@@ -13,7 +13,8 @@ function usage() {
   node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run] [--progress|--no-progress]
 
 Scenarios are discovered from */scenario.json.
-Repeat --provider to run multiple providers. If omitted, both claude and codex run.`);
+Repeat --provider to run multiple providers. If omitted, both claude and codex run.
+Repeat --only to run multiple scenarios.`);
 }
 
 function parsePositiveInteger(value, flag) {
@@ -26,7 +27,7 @@ function parseArgs(argv) {
   const args = {
     rustRepo: null,
     providers: [],
-    only: null,
+    only: new Set(),
     skips: new Set(),
     jobs: 1,
     dryRun: false,
@@ -37,7 +38,7 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === "--rust-repo") args.rustRepo = argv[++i];
     else if (arg === "--provider") args.providers.push(argv[++i]);
-    else if (arg === "--only") args.only = argv[++i];
+    else if (arg === "--only") args.only.add(argv[++i]);
     else if (arg === "--skip") args.skips.add(argv[++i]);
     else if (arg === "--jobs") args.jobs = parsePositiveInteger(argv[++i], "--jobs");
     else if (arg === "--dry-run") args.dryRun = true;
@@ -52,7 +53,9 @@ function parseArgs(argv) {
   }
 
   if (!args.rustRepo) throw new Error("--rust-repo is required");
-  if (args.only && args.skips.has(args.only)) throw new Error(`Scenario cannot be both --only and --skip: ${args.only}`);
+  for (const name of args.only) {
+    if (args.skips.has(name)) throw new Error(`Scenario cannot be both --only and --skip: ${name}`);
+  }
   if (args.providers.length === 0) args.providers = ["claude", "codex"];
   for (const provider of args.providers) {
     if (!["claude", "codex"].includes(provider)) throw new Error(`Bad provider: ${provider}`);
@@ -624,7 +627,7 @@ async function discoverScenarios(args) {
   const dirs = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .filter((name) => !args.only || name === args.only)
+    .filter((name) => args.only.size === 0 || args.only.has(name))
     .filter((name) => !args.skips.has(name))
     .sort();
 

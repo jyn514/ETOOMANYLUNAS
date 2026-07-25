@@ -114,6 +114,37 @@ function runGenerator({ scenarios, rustRepo, fakeCodex, extraArgs = [], extraEnv
   );
 }
 
+test("repeated --only flags select multiple scenarios", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "alpha");
+  await writeScenario(fixture.scenarios, "beta");
+  await writeScenario(fixture.scenarios, "gamma");
+
+  const result = runGenerator({
+    ...fixture,
+    extraArgs: ["--only", "alpha", "--only", "gamma", "--jobs", "2"],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  await readFile(path.join(fixture.scenarios, "alpha", "codex.md"));
+  await readFile(path.join(fixture.scenarios, "gamma", "codex.md"));
+  await assert.rejects(readFile(path.join(fixture.scenarios, "beta", "codex.md")), { code: "ENOENT" });
+});
+
+test("a scenario cannot be selected and skipped", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "alpha");
+  await writeScenario(fixture.scenarios, "beta");
+
+  const result = runGenerator({
+    ...fixture,
+    extraArgs: ["--only", "alpha", "--only", "beta", "--skip", "alpha"],
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Scenario cannot be both --only and --skip: alpha/);
+});
+
 test("setup state is isolated, committed, and visible to parallel runs", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "alpha");

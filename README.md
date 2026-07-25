@@ -24,7 +24,7 @@ supplied checkout unchanged.
 
 Useful flags:
 
-- `--only diagnostics` runs one scenario.
+- `--only diagnostics` runs one scenario. Repeat it to run multiple scenarios.
 - `--skip diagnostics` skips one scenario. Repeat it to skip multiple scenarios.
 - `--jobs 4` runs up to four scenario/provider runs at once. Turns within one scenario still run serially.
 - `--dry-run` prints commands without calling the model.
