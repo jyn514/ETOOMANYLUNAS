@@ -248,6 +248,129 @@ async function runCommand({ command, args }, cwd, dryRun, env = process.env, pro
   });
 }
 
+function commandText(command) {
+  return [command.command, ...command.args].map(shellQuote).join(" ");
+}
+
+async function runCheckedCommand(command, cwd, env, description) {
+  const result = await runCommand(command, cwd, false, env);
+  if (result.status !== 0) {
+    const details = result.stderr.trim();
+    throw new Error(
+      `${description} failed with status ${result.status}: ${commandText(command)}${details ? `\n${details}` : ""}`,
+    );
+  }
+  return result;
+}
+
+async function prepareRunWorktree(run, args, env, dryRunCommands) {
+  const placeholder = "$RUN_WORKTREE";
+  const addCommand = {
+    command: "git",
+    args: ["-C", args.rustRepo, "worktree", "add", "--detach", placeholder, "HEAD"],
+  };
+
+  if (args.dryRun) {
+    dryRunCommands.push(commandText(addCommand));
+    return {
+      cwd: placeholder,
+      cleanup: async () => {
+        dryRunCommands.push(
+          commandText({
+            command: "git",
+            args: ["-C", args.rustRepo, "worktree", "remove", "--force", placeholder],
+          }),
+        );
+      },
+    };
+  }
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), "transcript-worktree-"));
+  const worktree = path.join(tempDir, "checkout");
+  const actualAddCommand = {
+    ...addCommand,
+    args: ["-C", args.rustRepo, "worktree", "add", "--detach", worktree, "HEAD"],
+  };
+
+  try {
+    await runCheckedCommand(actualAddCommand, args.rustRepo, env, `${run.name} (${run.provider}) worktree setup`);
+  } catch (error) {
+    await rm(tempDir, { recursive: true, force: true });
+    throw error;
+  }
+
+  return {
+    cwd: worktree,
+    cleanup: async () => {
+      const removeResult = await runCommand(
+        {
+          command: "git",
+          args: ["-C", args.rustRepo, "worktree", "remove", "--force", worktree],
+        },
+        args.rustRepo,
+        false,
+        env,
+      );
+      await rm(tempDir, { recursive: true, force: true });
+      if (removeResult.status !== 0) {
+        throw new Error(
+          `${run.name} (${run.provider}) worktree cleanup failed with status ${removeResult.status}${
+            removeResult.stderr.trim() ? `\n${removeResult.stderr.trim()}` : ""
+          }`,
+        );
+      }
+    },
+  };
+}
+
+async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
+  if (!run.setup) return;
+
+  if (run.setup.patch) {
+    const command = { command: "git", args: ["apply", run.setup.patch] };
+    if (args.dryRun) dryRunCommands.push(commandText(command));
+    else await runCheckedCommand(command, cwd, env, `${run.name} (${run.provider}) setup patch`);
+  }
+
+  for (const setupCommand of run.setup.commands ?? []) {
+    const command = { command: "sh", args: ["-c", setupCommand] };
+    if (args.dryRun) dryRunCommands.push(commandText(command));
+    else {
+      await runCheckedCommand(
+        command,
+        cwd,
+        env,
+        `${run.name} (${run.provider}) setup command ${shellQuote(setupCommand)}`,
+      );
+    }
+  }
+
+  if (run.setup.commit) {
+    const addCommand = { command: "git", args: ["add", "--all"] };
+    const commitCommand = {
+      command: "git",
+      args: [
+        "-c",
+        "user.name=Transcript Fixture",
+        "-c",
+        "user.email=transcript-fixture@invalid",
+        "-c",
+        "commit.gpgSign=false",
+        "commit",
+        "--no-verify",
+        "-m",
+        run.setup.commit.message,
+      ],
+    };
+    if (args.dryRun) {
+      dryRunCommands.push(commandText(addCommand), commandText(commitCommand));
+    } else {
+      await runCheckedCommand(addCommand, cwd, env, `${run.name} (${run.provider}) setup staging`);
+      await runCheckedCommand(commitCommand, cwd, env, `${run.name} (${run.provider}) setup commit`);
+    }
+  }
+}
+
 async function runScenario(run, args) {
   if (!Array.isArray(run.turns) || run.turns.length === 0) throw new Error(`Run ${run.name} needs turns`);
 
@@ -261,8 +384,12 @@ async function runScenario(run, args) {
     codexAgentMessageTexts: new Set(),
   };
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
+  let runWorktree = null;
 
   try {
+    runWorktree = await prepareRunWorktree(run, args, runEnvironment.env, dryRunCommands);
+    await applyScenarioSetup(run, runWorktree.cwd, args, runEnvironment.env, dryRunCommands);
+
     for (const [turnIndex, turn] of run.turns.entries()) {
       const progressLabel = `${run.name} (${run.provider}) turn ${turnIndex + 1}/${run.turns.length}`;
       state.claudeSawAssistantText = false;
@@ -279,7 +406,7 @@ async function runScenario(run, args) {
           ? buildClaudeCommand(run, turn, state)
           : buildCodexCommand(run, turn, state);
 
-      const result = await runCommand(command, args.rustRepo, args.dryRun, runEnvironment.env, args.progress && !args.dryRun ? progressLabel : null);
+      const result = await runCommand(command, runWorktree.cwd, args.dryRun, runEnvironment.env, args.progress && !args.dryRun ? progressLabel : null);
       if (result.dryRunCommand) dryRunCommands.push(result.dryRunCommand);
       if (args.dryRun && run.provider === "codex" && !state.threadId) {
         state.threadId = "DRY_RUN_THREAD_ID";
@@ -307,7 +434,11 @@ async function runScenario(run, args) {
       state.turnIndex += 1;
     }
   } finally {
-    await runEnvironment.cleanup?.();
+    try {
+      await runWorktree?.cleanup?.();
+    } finally {
+      await runEnvironment.cleanup?.();
+    }
   }
 
   if (args.dryRun) {
@@ -334,13 +465,57 @@ async function discoverScenarios(args) {
     try {
       const scenarioPath = path.join(name, "scenario.json");
       const scenario = JSON.parse(await readFile(scenarioPath, "utf8"));
-      scenarios.push({ name, turns: scenario.turns });
+      const setup = validateScenarioSetup(name, scenario.setup);
+      scenarios.push({ name, turns: scenario.turns, setup });
     } catch (error) {
       if (error.code !== "ENOENT") throw new Error(`Failed to read ${name}/scenario.json: ${error.message}`);
     }
   }
 
   return scenarios;
+}
+
+function validateScenarioSetup(name, setup) {
+  if (setup === undefined) return null;
+  if (!setup || typeof setup !== "object" || Array.isArray(setup)) {
+    throw new Error(`${name}/scenario.json: setup must be an object`);
+  }
+
+  const supportedKeys = new Set(["patch", "commands", "commit"]);
+  for (const key of Object.keys(setup)) {
+    if (!supportedKeys.has(key)) throw new Error(`${name}/scenario.json: unknown setup property: ${key}`);
+  }
+
+  const validated = {};
+  if (setup.patch !== undefined) {
+    if (typeof setup.patch !== "string" || setup.patch.length === 0) {
+      throw new Error(`${name}/scenario.json: setup.patch must be a non-empty string`);
+    }
+    validated.patch = path.resolve(name, setup.patch);
+  }
+  if (setup.commands !== undefined) {
+    if (
+      !Array.isArray(setup.commands) ||
+      setup.commands.some((command) => typeof command !== "string" || command.length === 0)
+    ) {
+      throw new Error(`${name}/scenario.json: setup.commands must be an array of non-empty strings`);
+    }
+    validated.commands = setup.commands;
+  }
+  if (setup.commit !== undefined) {
+    if (
+      !setup.commit ||
+      typeof setup.commit !== "object" ||
+      Array.isArray(setup.commit) ||
+      Object.keys(setup.commit).some((key) => key !== "message") ||
+      typeof setup.commit.message !== "string" ||
+      setup.commit.message.length === 0
+    ) {
+      throw new Error(`${name}/scenario.json: setup.commit must contain one non-empty message`);
+    }
+    validated.commit = { message: setup.commit.message };
+  }
+  return validated;
 }
 
 async function runAll(runs, args) {
@@ -372,6 +547,13 @@ async function main() {
   if (!args.dryRun) {
     const rustRepoStat = await stat(args.rustRepo).catch(() => null);
     if (!rustRepoStat?.isDirectory()) throw new Error(`--rust-repo is not a directory: ${args.rustRepo}`);
+    const gitCheck = await runCommand(
+      { command: "git", args: ["-C", args.rustRepo, "rev-parse", "--show-toplevel"] },
+      args.rustRepo,
+      false,
+      agentEnvironment(),
+    );
+    if (gitCheck.status !== 0) throw new Error(`--rust-repo is not a Git repository: ${args.rustRepo}`);
   }
   const scenarios = await discoverScenarios(args);
 

@@ -11,6 +11,8 @@ Runs exclude the caller's global agent instructions (`~/.claude/CLAUDE.md` and `
 Runs allow agent network access for issue lookup: Claude is invoked with `WebFetch` and `WebSearch`, and Codex is invoked with `sandbox_workspace_write.network_access=true`.
 Agent subprocesses run with non-interactive Git/SSH prompts disabled. SSH agent access is cleared, and Git/SSH askpass helpers are forced to fail fast instead of opening a prompt.
 Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` only if you want to restore inherited SSH agent behavior.
+Each scenario/provider run uses a disposable Git worktree created from the Rust checkout's `HEAD`.
+This keeps parallel runs independent and leaves the supplied checkout unchanged, but uncommitted changes in that checkout are not included.
 
 ```sh
 ./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --provider claude
@@ -30,3 +32,27 @@ If `claude` or `codex` is not on `PATH`, set `CLAUDE_BIN=/full/path/to/claude` o
 The script prints per-run and per-turn progress on stderr. If a child process goes silent for 30 seconds, it emits a heartbeat line that names the stuck run and turn. Use `--no-progress` if you want the old quiet behavior.
 
 Each run writes `<scenario>/<provider>.md`. The raw JSONL event stream is only used while rendering the Markdown transcript.
+
+## Scenario setup
+
+A scenario can prepare its disposable worktree before the first turn:
+
+```json
+{
+  "setup": {
+    "patch": "setup.patch",
+    "commands": ["! ./path/to/check.sh"],
+    "commit": {
+      "message": "Add test fixture"
+    }
+  },
+  "turns": [
+    {
+      "prompt": "Work with the prepared fixture."
+    }
+  ]
+}
+```
+
+All setup fields are optional. The runner applies `patch` relative to the scenario directory, runs each `commands` entry with `sh -c`, then stages all prepared changes and creates the optional `commit`.
+Setup failures stop the run and identify the failing scenario, provider, and command.
