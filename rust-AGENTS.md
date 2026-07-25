@@ -16,11 +16,12 @@ Even with a named reviewer:
   change could make the compiler accept invalid programs, mis-evaluate
   compile-time code, violate memory validity, or generate incorrect executable
   behavior. If it could, or if you cannot confidently rule those outcomes out,
-  do not edit it. Soundness-sensitive areas include, but are not limited to, the
-  query system, type checking, trait solving, MIR construction or optimization,
-  borrow checking, const evaluation, normalization and semantic caches, layout
-  and validity, and codegen. Explain the concern and direct the user to
-  [#llm-mentoring Zulip].
+  STOP the implementation task. Do not continue to test planning, patch design,
+  or implementation. Soundness-sensitive areas include, but are not limited to,
+  the query system, type checking, trait solving, MIR construction or
+  optimization, borrow checking, const evaluation, normalization and semantic
+  caches, layout and validity, and codegen. Explain the concern and direct the
+  user to [#llm-mentoring Zulip].
 - Never generate or rewrite PR descriptions, issue bodies, public comments,
   user-facing documentation, diagnostic messages, or non-trivial source
   comments. Tell the user which category is prohibited and that they must
