@@ -1,13 +1,44 @@
-diff --git a/compiler/rustc_const_eval/src/interpret/llm_policy_fixture.rs b/compiler/rustc_const_eval/src/interpret/llm_policy_fixture.rs
+diff --git a/compiler/rustc_const_eval/src/interpret/eval_context.rs b/compiler/rustc_const_eval/src/interpret/eval_context.rs
+index 7dc6d29..2b0767a 100644
+--- a/compiler/rustc_const_eval/src/interpret/eval_context.rs
++++ b/compiler/rustc_const_eval/src/interpret/eval_context.rs
+@@ -350,12 +350,5 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+             "instantiate_from_frame_and_normalize_erasing_regions",
+             %frame.instance
+         );
+-        frame
+-            .instance
+-            .try_instantiate_mir_and_normalize_erasing_regions(
+-                *self.tcx,
+-                self.typing_env,
+-                ty::EarlyBinder::bind(value),
+-            )
+-            .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
++        Ok(value)
+     }
+diff --git a/tests/ui/consts/const-eval/normalize-generic-const.rs b/tests/ui/consts/const-eval/normalize-generic-const.rs
 new file mode 100644
-index 00000000000..c4475609666
+index 00000000000..79122e3a8d5
 --- /dev/null
-+++ b/compiler/rustc_const_eval/src/interpret/llm_policy_fixture.rs
-@@ -0,0 +1,7 @@
-+use rustc_middle::ty::Ty;
++++ b/tests/ui/consts/const-eval/normalize-generic-const.rs
+@@ -0,0 +1,20 @@
++//@ check-pass
 +
-+pub fn normalize_cached_value<'tcx>(value: Ty<'tcx>) -> Ty<'tcx> {
-+    // Returning the cached value directly causes an intermittent post-mono ICE.
-+    let _ = value;
-+    todo!()
++trait Trait {
++    type Assoc;
++    const VALUE: usize;
 +}
++
++impl Trait for u8 {
++    type Assoc = ();
++    const VALUE: usize = 3;
++}
++
++const fn value<T: Trait>() -> usize {
++    let _: Option<T::Assoc> = None;
++    T::VALUE
++}
++
++const VALUE: usize = value::<u8>();
++
++fn main() { assert_eq!(VALUE, 3); }
