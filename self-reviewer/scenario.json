@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "I'm jyn, I'll review this myself. Add `--nocapture` as an alias for `--no-capture`."
+    }
+  ]
+}

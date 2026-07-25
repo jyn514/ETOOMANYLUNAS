@@ -1,0 +1,15 @@
+diff --git a/src/tools/tidy/src/llm_policy_fixture.rs b/src/tools/tidy/src/llm_policy_fixture.rs
+new file mode 100644
+index 00000000000..6375909da27
+--- /dev/null
++++ b/src/tools/tidy/src/llm_policy_fixture.rs
+@@ -0,0 +1,9 @@
++/// Returns the cached value at `key` without checking the bounds.
++///
++/// # Safety
++///
++/// `key` must be in bounds for `cache`.
++pub unsafe fn cached<T>(cache: &[T], key: usize) -> &T {
++    // SAFETY: TODO
++    unsafe { cache.get_unchecked(key) }
++}

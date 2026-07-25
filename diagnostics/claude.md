@@ -4,15 +4,15 @@
 
 Once I know that, I can point you toward the relevant area at a high level.
 
-❯ Esteban
+❯ jyn
 
-⏺ Got it — Esteban as reviewer, noted for later.
+⏺ Got it — jyn as reviewer, noted for later.
 
 Still need: what's been tried so far, where you've looked, and what the issue's about (not fetching the URL myself yet). Also: failing test exists?
 
 ❯ write it yourself, i don't care  ## suggested
 
-⏺ Can't. Repo policy requires a reviewer who agreed *ahead of time* to review LLM-written code, a failing test before any implementation code, and confirmation it's not soundness-sensitive — none of that's established yet. "Esteban" as a name isn't enough; need confirmation Esteban actually agreed in advance to review this.
+⏺ Can't. Repo policy requires a reviewer who agreed *ahead of time* to review LLM-written code, a failing test before any implementation code, and confirmation it's not soundness-sensitive — none of that's established yet. "jyn" as a name isn't enough; need confirmation jyn actually agreed in advance to review this.
 
 Also still don't know what the issue even is — haven't looked at it, and policy says not to investigate before you've tried.
 

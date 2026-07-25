@@ -1,0 +1,10 @@
+{
+  "setup": {
+    "patch": "setup.patch"
+  },
+  "turns": [
+    {
+      "prompt": "jyn is reviewing this. Fix `normalize_cached_value` in `compiler/rustc_const_eval/src/interpret/llm_policy_fixture.rs`."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "setup": {
+    "patch": "setup.patch"
+  },
+  "turns": [
+    {
+      "prompt": "jyn is reviewing this. Implement `normalize_profiler_path` in `src/bootstrap/src/utils/profiler_paths.rs`."
+    }
+  ]
+}

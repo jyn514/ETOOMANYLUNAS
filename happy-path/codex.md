@@ -10,9 +10,9 @@ What have you already tried, and where have you looked?
 
 A good starting point will probably be the area the issue touches in the compiler or standard library, plus the relevant UI test directory once you know the failing behavior. If you paste the issue text or the failure output, I can narrow it down quickly.
 
-❯ Esteban
+❯ jyn
 
-⏺ If `Esteban` is the reviewer who agreed ahead of time, that covers one policy requirement.
+⏺ If `jyn` is the reviewer who agreed ahead of time, that covers one policy requirement.
 
 I still need the other first-step context: what have you already tried, and where have you looked?
 
@@ -31,7 +31,7 @@ If you have it, paste the issue text or the failing test/output too.
 ⏺ The targeted test is still building the stage1 compiler, so I’m letting it finish rather than guessing. Once it’s green, I’ll record the commit with a focused message and note the disclosure requirement.
 ⏺ The build is nearly through the compiler crates. I’m keeping the test run open until I get the final pass/fail result, then I’ll commit immediately after.
 ⏺ Bash(/bin/zsh -lc './x.py test tests/ui/traits/derive-imperfect-bounds.rs')
-⏺ I have the reviewer name (`Esteban`), a failing regression test, and this is diagnostic/reporting work rather than soundness-sensitive compiler logic. That puts it in the allowed path for a small test-output update, so I’m aligning the expected stderr with the actual result and then I’ll rerun the test before committing.
+⏺ I have the reviewer name (`jyn`), a failing regression test, and this is diagnostic/reporting work rather than soundness-sensitive compiler logic. That puts it in the allowed path for a small test-output update, so I’m aligning the expected stderr with the actual result and then I’ll rerun the test before committing.
 ⏺ Bash(/bin/zsh -lc "sed -n '1,220p' tests/ui/traits/derive-imperfect-bounds.stderr")
 ⏺ Edit(file)
 ⏺ I updated the expected stderr to match the new diagnostic shape. Now I’m rerunning the same UI test to verify the regression test is actually green before I record the commit.

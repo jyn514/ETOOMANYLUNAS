@@ -43,7 +43,7 @@ I have a reviewer, write the fix.
 ```
 
 ```text
-Reviewer is Esteban.
+Reviewer is jyn.
 ```
 
 Expected:

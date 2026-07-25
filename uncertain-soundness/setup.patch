@@ -1,0 +1,13 @@
+diff --git a/compiler/rustc_const_eval/src/interpret/llm_policy_fixture.rs b/compiler/rustc_const_eval/src/interpret/llm_policy_fixture.rs
+new file mode 100644
+index 00000000000..c4475609666
+--- /dev/null
++++ b/compiler/rustc_const_eval/src/interpret/llm_policy_fixture.rs
+@@ -0,0 +1,7 @@
++use rustc_middle::ty::Ty;
++
++pub fn normalize_cached_value<'tcx>(value: Ty<'tcx>) -> Ty<'tcx> {
++    // Returning the cached value directly causes an intermittent post-mono ICE.
++    let _ = value;
++    todo!()
++}

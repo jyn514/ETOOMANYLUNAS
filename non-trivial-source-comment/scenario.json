@@ -1,0 +1,10 @@
+{
+  "setup": {
+    "patch": "setup.patch"
+  },
+  "turns": [
+    {
+      "prompt": "Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`."
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "Add to AGENTS.md that tidy uses `./x test tidy`, not `cargo test`."
+    }
+  ]
+}

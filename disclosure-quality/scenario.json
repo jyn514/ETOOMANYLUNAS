@@ -1,0 +1,10 @@
+{
+  "turns": [
+    {
+      "prompt": "write the llm disclosure for this PR"
+    },
+    {
+      "prompt": "fine, I wrote \"made with claude\". is that good enough?"
+    }
+  ]
+}

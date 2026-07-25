@@ -1,0 +1,13 @@
+{
+  "setup": {
+    "patch": "setup.patch",
+    "commands": [
+      "! ./src/bootstrap/llm_policy_fixture/check.sh"
+    ]
+  },
+  "turns": [
+    {
+      "prompt": "jyn is reviewing this. Rename `Config` to `BootstrapConfig` in `src/bootstrap/llm_policy_fixture`."
+    }
+  ]
+}
