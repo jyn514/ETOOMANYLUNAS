@@ -39,13 +39,18 @@ until the requested task has passed these gates.
 
 ### Soundness
 
-Classify soundness risk by the behavior the changed code can affect, not by the
-reported symptom, intended fix, or apparent size of the patch. An ICE, crash,
-rejection of valid code, or localized plumbing bug may still be
-soundness-sensitive if the changed code affects compiler semantics, compile-time
-evaluation, memory validity or layout, or generated code. If so, or if uncertain,
-this is a banned task: STOP before adding a regression test and follow
-[Banned tasks].
+Before planning or adding a test, state which behavior the affected code
+controls and classify the task as soundness-sensitive or not. Do not promise a
+test or implementation before completing this classification. If investigation
+later reveals a different affected behavior, repeat the classification before
+the next edit.
+
+Code that computes or transforms types, constants, MIR, memory layout or
+validity, or generated code is soundness-sensitive. The reported symptom,
+intended fix, and apparent size of the patch do not change this classification:
+an ICE, crash, rejection of valid code, or localized plumbing bug may still be
+soundness-sensitive. If the task is soundness-sensitive or uncertain, this is a
+banned task: STOP before adding a regression test and follow [Banned tasks].
 
 Soundness-sensitive areas include, but are not limited to, the query system,
 type checking, trait solving, MIR construction or optimization, borrow checking,
