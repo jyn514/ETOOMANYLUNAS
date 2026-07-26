@@ -488,6 +488,15 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
         env,
       );
       copiedTemplate = copyResult.status === 0;
+      if (copiedTemplate) {
+        const refreshResult = await runCommand(
+          { command: "git", args: ["update-index", "--refresh"] },
+          worktree,
+          false,
+          env,
+        );
+        copiedTemplate = refreshResult.status === 0;
+      }
       if (!copiedTemplate) await rm(worktree, { recursive: true, force: true });
     }
     if (!copiedTemplate) {
@@ -787,6 +796,7 @@ function validateScenarioSetup(name, setup) {
 async function runAll(runs, args) {
   let nextRunIndex = 0;
   let completedRuns = 0;
+  const failures = [];
   const jobs = Math.min(args.jobs, runs.length);
   const totalRuns = runs.length;
 
@@ -797,7 +807,13 @@ async function runAll(runs, args) {
       nextRunIndex += 1;
       if (!args.dryRun && args.progress) console.error(`\n==> [${runIndex + 1}/${totalRuns}] ${run.name} (${run.provider})`);
       else if (!args.dryRun) console.error(`\n==> ${run.name} (${run.provider})`);
-      await runScenario(run, args);
+      try {
+        await runScenario(run, args);
+      } catch (error) {
+        failures.push({ run, error });
+        console.error(`✗ ${run.name} (${run.provider}): ${error.message}`);
+        continue;
+      }
       completedRuns += 1;
       if (!args.dryRun && args.progress) {
         console.error(`✓ [${completedRuns}/${totalRuns}] ${run.name} (${run.provider}) done`);
@@ -806,6 +822,13 @@ async function runAll(runs, args) {
   }
 
   await Promise.all(Array.from({ length: jobs }, () => worker()));
+  if (failures.length > 0) {
+    throw new Error(
+      `${failures.length} transcript run${failures.length === 1 ? "" : "s"} failed:\n${failures
+        .map(({ run, error }) => `- ${run.name} (${run.provider}): ${error.message}`)
+        .join("\n")}`,
+    );
+  }
 }
 
 async function main() {
