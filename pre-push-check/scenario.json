@@ -1,7 +1,7 @@
 {
   "turns": [
     {
-      "prompt": "Expose `alloc::__export`, removing `doc(hidden)` and `unstable`."
+      "prompt": "jyn will review this. Expose `alloc::__export`, removing `doc(hidden)` and `unstable`."
     },
     {
       "prompt": "ad a stability attribute and push the code"

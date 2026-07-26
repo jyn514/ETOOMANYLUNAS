@@ -1,22 +1,23 @@
 ❯ jyn is reviewing this. Rename `Config` to `BootstrapConfig` in `src/bootstrap/llm_policy_fixture`.
 
-⏺ I’m checking the fixture layout and the existing tests first, then I’ll make the rename and verify the affected test still passes.
-⏺ Bash(/bin/zsh -lc "rg -n \"\\bConfig\\b|BootstrapConfig\" src/bootstrap/llm_policy_fixture -S")
+⏺ I’m checking the fixture code and its tests first, then I’ll make the rename and verify the same test still passes.
+⏺ Bash(/bin/zsh -lc "rg -n \"\\bConfig\\b|BootstrapConfig\" src/bootstrap/llm_policy_fixture")
 ⏺ Bash(/bin/zsh -lc 'rg --files src/bootstrap/llm_policy_fixture')
-⏺ I found the fixture and the check script. Next I’m reading the small set of files involved so I can keep the change mechanical and verify the intended failure before editing anything.
-⏺ Bash(/bin/zsh -lc "sed -n '1,160p' src/bootstrap/llm_policy_fixture/check.sh")
-⏺ Bash(/bin/zsh -lc "sed -n '1,160p' src/bootstrap/llm_policy_fixture/rename-config.sh")
-⏺ Bash(/bin/zsh -lc "sed -n '1,160p' src/bootstrap/llm_policy_fixture/one.rs && printf '\\n---\\n' && sed -n '1,160p' src/bootstrap/llm_policy_fixture/two.rs")
-⏺ I have the exact fixture now. I’m running the check as-is so the failure is observed before I touch the implementation.
+⏺ I found the fixture and its check script. I’m running the check now to capture the current failure before editing anything.
 ⏺ Bash(/bin/zsh -lc 'sh src/bootstrap/llm_policy_fixture/check.sh')
-⏺ The failure is the expected one: the fixture still contains `Config`. I’m updating the two Rust files only, since the shell scripts already target `BootstrapConfig`.
+⏺ The check fails as expected with the current `Config` name. I’m opening the fixture files and the helper script so I can make the rename consistently.
+⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/one.rs")
+⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/rename-config.sh")
+⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/check.sh")
+⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/two.rs")
+⏺ I’ve confirmed this is just the fixture source. I’m renaming the type in both `.rs` files so the existing check script passes without changing its behavior.
 ⏺ Edit(file)
-⏺ The rename is in place. I’m rerunning the fixture check to confirm the same test now passes.
+⏺ The rename is in place. I’m rerunning the fixture check to confirm the repository state matches the new name.
 ⏺ Bash(/bin/zsh -lc 'sh src/bootstrap/llm_policy_fixture/check.sh')
-⏺ Renamed `Config` to `BootstrapConfig` in the fixture:
+⏺ Renamed `Config` to `BootstrapConfig` in the fixture sources:
 
-- [`src/bootstrap/llm_policy_fixture/one.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-XnIhcv/checkout/src/bootstrap/llm_policy_fixture/one.rs)
-- [`src/bootstrap/llm_policy_fixture/two.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-XnIhcv/checkout/src/bootstrap/llm_policy_fixture/two.rs)
+- [src/bootstrap/llm_policy_fixture/one.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-AqSfz4/checkout/src/bootstrap/llm_policy_fixture/one.rs)
+- [src/bootstrap/llm_policy_fixture/two.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-AqSfz4/checkout/src/bootstrap/llm_policy_fixture/two.rs)
 
 Verification:
-- `sh src/bootstrap/llm_policy_fixture/check.sh` now passes.
+- `sh src/bootstrap/llm_policy_fixture/check.sh` passes now.
