@@ -6,8 +6,10 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { clearInterval, setInterval } from "node:timers";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
+
+const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const PROVIDER_MODELS = {
   claude: "claude-sonnet-5",
@@ -426,7 +428,7 @@ async function snapshotHarnessRevision(args, scenarios, env) {
   for (const scenario of scenarios) {
     inputPaths.add(path.join(scenario.name, "scenario.json"));
     if (scenario.setup?.patch) {
-      const relativePatch = path.relative(process.cwd(), scenario.setup.patch);
+      const relativePatch = path.relative(HARNESS_ROOT, scenario.setup.patch);
       if (relativePatch.startsWith(`..${path.sep}`) || path.isAbsolute(relativePatch)) {
         throw new Error(`${scenario.name} setup patch is outside the harness repository: ${scenario.setup.patch}`);
       }
@@ -448,13 +450,13 @@ async function snapshotHarnessRevision(args, scenarios, env) {
   try {
     const head = await runCheckedCommand(
       { command: "git", args: ["rev-parse", "HEAD"] },
-      process.cwd(),
+      HARNESS_ROOT,
       snapshotEnv,
       "harness snapshot HEAD discovery",
     );
     await runCheckedCommand(
       { command: "git", args: ["read-tree", head.stdout.trim()] },
-      process.cwd(),
+      HARNESS_ROOT,
       snapshotEnv,
       "harness snapshot initialization",
     );
@@ -463,13 +465,13 @@ async function snapshotHarnessRevision(args, scenarios, env) {
         command: "git",
         args: ["add", "--all", "--", ...[...inputPaths].sort().map((inputPath) => `:(top,literal)${inputPath}`)],
       },
-      process.cwd(),
+      HARNESS_ROOT,
       snapshotEnv,
       "harness snapshot staging",
     );
     const tree = await runCheckedCommand(
       { command: "git", args: ["write-tree"] },
-      process.cwd(),
+      HARNESS_ROOT,
       snapshotEnv,
       "harness snapshot tree creation",
     );
@@ -485,7 +487,7 @@ async function snapshotHarnessRevision(args, scenarios, env) {
           "transcript harness input snapshot",
         ],
       },
-      process.cwd(),
+      HARNESS_ROOT,
       snapshotEnv,
       "harness snapshot commit creation",
     );

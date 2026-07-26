@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const runner = path.join(path.dirname(fileURLToPath(import.meta.url)), "generate-transcripts.mjs");
+const sourceScripts = path.dirname(fileURLToPath(import.meta.url));
 
 function execute(command, args, options = {}) {
   return spawnSync(command, args, {
@@ -31,12 +31,25 @@ async function makeFixture(t) {
   const scenarios = path.join(root, "scenarios");
   await mkdir(rustRepo);
   await mkdir(scenarios);
+  await mkdir(path.join(scenarios, "scripts"));
+  const runner = path.join(scenarios, "scripts", "generate-transcripts.mjs");
+  await copyFile(path.join(sourceScripts, "generate-transcripts.mjs"), runner);
+  await copyFile(path.join(sourceScripts, "transcript.rules"), path.join(scenarios, "scripts", "transcript.rules"));
+  git(scenarios, "init");
+  git(scenarios, "config", "user.name", "Test User");
+  git(scenarios, "config", "user.email", "test@example.invalid");
+  git(scenarios, "add", "scripts");
+  git(scenarios, "commit", "-m", "Harness");
   git(rustRepo, "init");
   git(rustRepo, "config", "user.name", "Test User");
   git(rustRepo, "config", "user.email", "test@example.invalid");
   git(rustRepo, "config", "status.showUntrackedFiles", "normal");
   await writeFile(path.join(rustRepo, "base.txt"), "base\n");
-  git(rustRepo, "add", "base.txt");
+  await mkdir(path.join(rustRepo, "library", "backtrace"), { recursive: true });
+  await mkdir(path.join(rustRepo, "src", "tools", "cargo"), { recursive: true });
+  await writeFile(path.join(rustRepo, "library", "backtrace", ".keep"), "");
+  await writeFile(path.join(rustRepo, "src", "tools", "cargo", ".keep"), "");
+  git(rustRepo, "add", "base.txt", "library/backtrace/.keep", "src/tools/cargo/.keep");
   git(rustRepo, "commit", "-m", "Base");
 
   const fakeCodex = path.join(root, "fake-codex.mjs");
@@ -45,6 +58,10 @@ async function makeFixture(t) {
     `#!/usr/bin/env node
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+if (process.argv.includes("--version")) {
+  console.log("fake-codex 1.0");
+  process.exit(0);
+}
 if (process.env.FAIL_PROVIDER === "1") process.exit(7);
 const fixture = readFileSync("fixture.txt", "utf8").trim();
 const command = readFileSync("command.txt", "utf8").trim();
@@ -64,7 +81,7 @@ console.log(JSON.stringify({
   );
   await chmod(fakeCodex, 0o755);
 
-  return { root, rustRepo, scenarios, fakeCodex };
+  return { root, rustRepo, scenarios, fakeCodex, runner };
 }
 
 async function writeScenario(scenarios, name, command = "printf command > command.txt") {
@@ -95,7 +112,7 @@ index 0000000..e69de29
   );
 }
 
-function runGenerator({ scenarios, rustRepo, fakeCodex, extraArgs = [], extraEnv = {} }) {
+function runGenerator({ scenarios, rustRepo, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
   return execute(
     process.execPath,
     [
@@ -188,14 +205,20 @@ test("snapshotting ignores broken submodule worktrees", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "broken-submodule");
   const head = git(fixture.rustRepo, "rev-parse", "HEAD");
+  git(fixture.rustRepo, "rm", "-r", "--cached", "library/backtrace");
   git(fixture.rustRepo, "update-index", "--add", "--cacheinfo", `160000,${head},library/backtrace`);
+  await writeFile(
+    path.join(fixture.rustRepo, ".gitmodules"),
+    `[submodule "library/backtrace"]\n\tpath = library/backtrace\n\turl = ${fixture.rustRepo}\n`,
+  );
+  git(fixture.rustRepo, "add", ".gitmodules");
   git(fixture.rustRepo, "commit", "-m", "Add submodule gitlink");
   const submodule = path.join(fixture.rustRepo, "library", "backtrace");
   await mkdir(submodule, { recursive: true });
   await writeFile(path.join(submodule, ".git"), "gitdir: ../../../missing/modules/library/backtrace\n");
   await writeFile(path.join(fixture.rustRepo, "AGENTS.md"), "agent instructions\n");
 
-  const result = runGenerator({ ...fixture });
+  const result = runGenerator({ ...fixture, extraEnv: { GIT_ALLOW_PROTOCOL: "file" } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     await readFile(path.join(fixture.scenarios, "broken-submodule", "codex.md"), "utf8"),
@@ -266,7 +289,8 @@ test("dry runs include setup commands without requiring or changing a repository
     extraArgs: ["--dry-run"],
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /worktree.*add.*\$RUN_WORKTREE.*\$INPUT_REVISION/);
+  assert.match(result.stderr, /git.*clone.*--shared.*--no-checkout.*\$RUN_WORKTREE/);
+  assert.match(result.stderr, /git.*checkout.*--detach.*\$INPUT_REVISION/);
   assert.match(result.stderr, /git.*apply.*--index.*setup\.patch/);
   assert.doesNotMatch(result.stderr, /'git' 'add' '--all'/);
   assert.match(result.stderr, /git.*commit.*Fixture dry/);
