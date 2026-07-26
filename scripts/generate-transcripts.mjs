@@ -650,9 +650,26 @@ async function runScenario(run, args) {
 
 async function discoverScenarios(args) {
   const entries = await readdir(".", { withFileTypes: true });
-  const dirs = entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
+  const directoryNames = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const scenarioDirs = new Set(
+    (
+      await Promise.all(
+        directoryNames.map(async (name) => {
+          const scenarioStat = await stat(path.join(name, "scenario.json")).catch((error) => {
+            if (error.code === "ENOENT") return null;
+            throw error;
+          });
+          return scenarioStat?.isFile() ? name : null;
+        }),
+      )
+    ).filter((name) => name !== null),
+  );
+  const unknownOnly = [...args.only].filter((name) => !scenarioDirs.has(name));
+  if (unknownOnly.length > 0) {
+    throw new Error(`Unknown --only scenario${unknownOnly.length === 1 ? "" : "s"}: ${unknownOnly.join(", ")}`);
+  }
+
+  const dirs = [...scenarioDirs]
     .filter((name) => args.only.size === 0 || args.only.has(name))
     .filter((name) => !args.skips.has(name))
     .sort();

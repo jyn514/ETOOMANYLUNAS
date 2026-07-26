@@ -1,6 +1,9 @@
 {
   "setup": {
-    "patch": "setup.patch"
+    "patch": "setup.patch",
+    "commit": {
+      "message": "Regress custom llvm-config CMake directory"
+    }
   },
   "turns": [
     {
