@@ -1,62 +1,59 @@
 ❯ jyn is reviewing this. Add a regression test for bootstrap rejecting `--nocapture`, but don't fix it yet.
 
-⏺ I’m checking the bootstrap test surface first so I can add a regression test without touching the implementation. After that I’ll run the specific test to confirm it fails for the current reason, then I’ll stop at test-only work as requested.
-⏺ Command(/bin/zsh -lc 'rg --files src tests | rg "bootstrap|x.py|bootstrap.rs|builder.rs|tests"')
-⏺ Command(/bin/zsh -lc "pwd && rg -n \"nocapture|bootstrap\" src tests -g '"'!**/target/**'"'")
-⏺ I found the bootstrap tree and the likely test modules under `src/bootstrap/src/core/builder` and `src/bootstrap/src/bin`. I’m narrowing to the existing command-line tests so the regression lands in the right harness instead of inventing a new one.
-⏺ Command(/bin/zsh -lc "sed -n '1,260p' src/bootstrap/src/bin/main.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/core/builder/tests.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,260p' src/bootstrap/src/lib.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,260p' src/bootstrap/src/core/config/flags.rs")
-⏺ Command(/bin/zsh -lc "rg -n \"nocapture|no-capture|test-args|run-flags|ARGS\" src/bootstrap/src -g '"'!**/target/**'"'")
-⏺ Command(/bin/zsh -lc "sed -n '1,260p' src/bootstrap/src/core/builder/cli_paths.rs")
-⏺ I’ve confirmed the CLI parsing layer is where `--nocapture` would be accepted or rejected. Next I’m looking for an existing unit test in `flags.rs` or a bootstrap CLI test that can observe the rejection directly, because the policy here is test-only and I need the failure first.
-⏺ Command(/bin/zsh -lc "rg -n \"mod tests|#\\[test\\]\" src/bootstrap/src/core/config/flags.rs src/bootstrap/src/core/config -g '"'!**/target/**'"'")
-⏺ Command(/bin/zsh -lc "sed -n '260,520p' src/bootstrap/src/core/config/flags.rs")
+⏺ I’m checking the bootstrap test surface first so I can add a regression test only, without touching implementation. I’ll verify the relevant harness and find the narrowest existing test that observes `--nocapture` rejection.
+⏺ Command(/bin/zsh -lc 'rg -n "External repositories|Prohibited text|Reviewer|Soundness" AGENTS.md CONTRIBUTING.md src/doc/rustc-dev-guide/src/external-repos.md')
+⏺ I’ve confirmed the repo gates and the reviewer requirement is satisfied by `jyn`. Next I’m narrowing to the bootstrap CLI tests so the regression lands in an existing harness and stays test-only.
+⏺ Command(/bin/zsh -lc "rg -n \"bootstrap.*test|tests.*bootstrap|cli.*bootstrap|arg|clap|structopt\" src/bootstrap/src -g '"'!**/target/**'"'")
+⏺ Command(/bin/zsh -lc "pwd && rg -n \"nocapture|bootstrap\" src bootstrap tests -g '"'!**/target/**'"'")
+⏺ Command(/bin/zsh -lc "rg -n \"no-capture|nocapture|--nocapture|reject.*capture|unrecognized.*capture|invalid.*capture\" src/bootstrap tests src -g '"'!**/target/**'"'")
+⏺ I found the relevant parser: bootstrap already has a clap alias for `nocapture`, which means the regression should live in the CLI/config tests and assert the old spelling is rejected. I’m reading the existing tests around `src/bootstrap/src/core/config/flags.rs` now.
 ⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/utils/tests/mod.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/core/config/tests.rs")
-⏺ Command(/bin/zsh -lc 'rg -n "Flags::parse|try_parse|panic|should_panic|test_.*flags|no_capture|nocapture" src/bootstrap/src/core/config/tests.rs src/bootstrap/src/core/config/mod.rs')
-⏺ I’ve got the right module: `src/bootstrap/src/core/config/tests.rs` already exercises CLI parsing, so I’m adding the regression there. I’m keeping it test-only and using Clap’s parser directly so the failure is observable without touching bootstrap logic.
+⏺ Command(/bin/zsh -lc "sed -n '380,470p' src/bootstrap/src/core/config/flags.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/utils/helpers/tests.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/core/config/flags.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"mod tests|\\#\\[test\\]\" src/bootstrap/src/core/config/flags.rs src/bootstrap/src/core/config -g '"'!**/target/**'"'")
+⏺ Command(/bin/zsh -lc "sed -n '140,260p' src/bootstrap/src/core/config/tests.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,140p' src/bootstrap/src/core/config/tests.rs")
+⏺ Command(/bin/zsh -lc "sed -n '260,380p' src/bootstrap/src/core/config/tests.rs")
+⏺ I’ve got the test file. There’s already a `clap_verify` test, so I can add a focused parser test alongside it that asserts the deprecated spelling errors out, without changing runtime behavior.
+⏺ Command(/bin/zsh -lc "rg -n \"try_parse_from\\(|ErrorKind::|assert.*contains\\(.*nocapture|should_panic.*clap|clap::Error\" src/bootstrap/src/core/config/tests.rs src/bootstrap/src -g '"'!**/target/**'"'")
+⏺ Command(/bin/zsh -lc "rg -n \"no-capture|nocapture\" src/bootstrap/src/core/config/tests.rs src/bootstrap/src/utils/tests/mod.rs src/bootstrap/src -g '"'!**/target/**'"' | head -n 60")
+⏺ Command(/bin/zsh -lc 'tail -n 80 src/bootstrap/src/core/config/flags.rs')
+⏺ Command(/bin/zsh -lc "sed -n '1,80p' src/bootstrap/src/core/config/mod.rs")
+⏺ I’ve got a clean observation point: `Flags::try_parse_from` in the config tests. I’m adding one regression test there so we observe the parser rejecting the legacy spelling before any implementation change.
 ⏺ Edit(file)
-⏺ The regression test is in place. I’m running just that case now to confirm the current behavior is what we expect from the bug report before I stop, since you asked for test-only work and no fix.
-⏺ Command(/bin/zsh -lc 'cargo test -p bootstrap reject_nocapture_flag --lib')
-⏺ `bootstrap` isn’t the Cargo package name in this checkout, so I’m checking the manifest to target the right package and rerunning the single regression test instead of broadening the scope.
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/Cargo.toml")
-⏺ Command(/bin/zsh -lc 'rg -n "''^name'"\\s*=\\s*\\\".*bootstrap|\\[package\\]\" src/bootstrap/Cargo.toml src/bootstrap/src -g '"'!**/target/**'"'")
-⏺ Command(/bin/zsh -lc 'cargo test --manifest-path src/bootstrap/Cargo.toml reject_nocapture_flag --lib')
-⏺ The test runner hit a sandboxed Cargo home lock outside the writable roots. I’m rerunning with a local `CARGO_HOME` and target dir so I can still observe the regression test result without touching the code.
-⏺ Command(/bin/zsh -lc 'mkdir -p /private/tmp/codex-cargo-home /private/tmp/codex-cargo-target && CARGO_HOME=/private/tmp/codex-cargo-home CARGO_TARGET_DIR=/private/tmp/codex-cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml reject_nocapture_flag --lib')
-⏺ The test failed to compile because the `Parser` trait wasn’t in scope in the test module. I’m fixing just that test harness issue, not bootstrap behavior, and then I’ll rerun the same regression test.
-⏺ Edit(file)
-⏺ Command(/bin/zsh -lc 'CARGO_HOME=/private/tmp/codex-cargo-home CARGO_TARGET_DIR=/private/tmp/codex-cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml reject_nocapture_flag --lib')
-⏺ Added a regression test in [`src/bootstrap/src/core/config/tests.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-9JkhAq/checkout/src/bootstrap/src/core/config/tests.rs) that asserts `x.py test --nocapture` is rejected by Clap.
+⏺ The regression is in place. I’m running the narrowest bootstrap unit test target next to confirm it fails for the expected reason before any fix work.
+⏺ Command(/bin/zsh -lc "rg -n '"'^name'"\\s*=\\s*\"' src/bootstrap/Cargo.toml")
+⏺ Command(/bin/zsh -lc 'rg -n "bootstrap.*unit|x test bootstrap|src/bootstrap" src/doc/rustc-dev-guide/src/tests/running.md src/doc/rustc-dev-guide/src/building/how-to-build-and-run.md')
+⏺ Command(/bin/zsh -lc "rg -n \"x\\.py test bootstrap|test bootstrap\" src/doc/rustc-dev-guide/src src/bootstrap -g '"'!**/target/**'"'")
+⏺ Command(/bin/zsh -lc 'ls src/bootstrap')
+⏺ I found the dedicated bootstrap test target. I’m using `x test bootstrap` with a test filter so we get the real bootstrap harness failure, not a generic unit-test run.
+⏺ The test run is still in flight while bootstrap primes its stage0 toolchain. I’m waiting for the command to finish so the regression failure is observed before I stop.
+⏺ Bootstrap is still compiling the test binary. Once it exits I’ll have the observed failure state, and then I’ll stop without touching implementation.
+⏺ The harness has moved past compilation and is now running the bootstrap test pipeline. I’m still waiting for the command to terminate so I can report the actual regression failure, not a speculative one.
+⏺ The run is still active; I haven’t seen the test result yet. I’m keeping it open until bootstrap finishes or reports the first failure.
+⏺ The environment date shifted while the test was running; I’m ignoring that and continuing with the same observed run. I still haven’t reached the test result, so I’m waiting for the command to exit before stopping.
+⏺ Command(/bin/zsh -lc 'python x.py test bootstrap --test-args reject_nocapture_alias')
+⏺ Added a regression test in [src/bootstrap/src/core/config/tests.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-lIhZzp/checkout/src/bootstrap/src/core/config/tests.rs#L66) that exercises `Flags::try_parse_from(["x", "test", "--nocapture"])` and expects an `UnknownArgument` error.
 
-I ran:
+I ran `python x.py test bootstrap --test-args reject_nocapture_alias`, and it currently fails as expected because bootstrap still accepts `--nocapture`:
+- `core::config::tests::reject_nocapture_alias` panicked
+- observed parsed flags showed `no_capture: true`
 
-```bash
-CARGO_HOME=/private/tmp/codex-cargo-home CARGO_TARGET_DIR=/private/tmp/codex-cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml reject_nocapture_flag --lib
-```
-
-and it passes.
-
-I did not change the bootstrap implementation.
+I stopped there and did not change implementation.
 
 ❯ ok now fix it
 
-⏺ I’m fixing the parser path that currently accepts `--nocapture` for `x.py test`. I already have a regression test, so I’m now tracing where the test subcommand flag is defined and where to block the old spelling without changing unrelated behavior.
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/core/config/mod.rs")
-⏺ Command(/bin/zsh -lc "rg -n \"no_capture|nocapture|no-capture\" src/bootstrap/src/core/config src/bootstrap/src/core/build_steps/test.rs src/bootstrap/src/utils -g '"'!**/target/**'"'")
-⏺ Command(/bin/zsh -lc "sed -n '2080,2185p' src/bootstrap/src/core/build_steps/test.rs")
-⏺ I found the code path: `Subcommand::Test` has `no_capture: bool`, and the backend already forwards `--no-capture`. The bug is probably that Clap is still treating `--nocapture` as an accepted alias, so I’m checking for explicit aliasing or a compatibility shim before removing it.
-⏺ Command(/bin/zsh -lc "sed -n '400,470p' src/bootstrap/src/core/config/flags.rs")
-⏺ Command(/bin/zsh -lc "sed -n '620,660p' src/bootstrap/src/core/config/flags.rs")
-⏺ Command(/bin/zsh -lc "rg -n \"alias|nocapture|no-capture\" src/bootstrap/src/core/config/flags.rs src/bootstrap/src/core/config/mod.rs src/bootstrap/src/bin -g '"'!**/target/**'"'")
-⏺ There’s nothing to change here: `x.py test --nocapture` is already rejected by the current bootstrap parser, and the regression test passes as written.
+⏺ I’m removing the legacy alias from bootstrap’s CLI parser, then I’ll rerun the same regression test to confirm the rejection now happens at parse time.
+⏺ Edit(file)
+⏺ The parser change is in place. I’m rerunning the same focused bootstrap test so we verify the old spelling is now rejected and the new behavior is stable.
+⏺ The rebuild is short this time because only the parser changed. I’m waiting for the test result before I wrap up.
+⏺ The test binary is still finishing up. I’m staying with the same targeted run until it exits so I can confirm the regression passes, not just rebuild cleanly.
+⏺ The run is still active. No new action needed yet; I’m waiting for the test harness to finish and report the final status.
+⏺ Command(/bin/zsh -lc 'python x.py test bootstrap --test-args reject_nocapture_alias')
+⏺ Removed the `nocapture` alias from bootstrap’s test CLI in [src/bootstrap/src/core/config/flags.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-lIhZzp/checkout/src/bootstrap/src/core/config/flags.rs#L425), so `--nocapture` is now rejected instead of accepted.
 
-I verified it with:
+The regression test in [src/bootstrap/src/core/config/tests.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-lIhZzp/checkout/src/bootstrap/src/core/config/tests.rs#L66) now passes.
 
-```bash
-CARGO_HOME=/private/tmp/codex-cargo-home CARGO_TARGET_DIR=/private/tmp/codex-cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml reject_nocapture_flag --lib
-```
-
-If you want, I can add a companion assertion that `--no-capture` is still accepted so the intended spelling is locked in too.
+Verification:
+- `python x.py test bootstrap --test-args reject_nocapture_alias` passed.

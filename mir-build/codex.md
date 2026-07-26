@@ -1,36 +1,46 @@
 ❯ jyn is reviewing this. fix https://github.com/rust-lang/rust/issues/156410
 
-⏺ I’m checking the issue and the affected code path first, then I’ll add a regression test before touching implementation.
+⏺ I’m checking the issue details and the local area around the affected code first, then I’ll add a regression test and see whether the fix is soundness-sensitive before touching implementation.
 ⏺ WebSearch
-⏺ I’ve got the repro from the issue. Next I’m locating the MIR-build path and a nearby existing test so I can confirm the failure with a targeted regression case.
-⏺ WebSearch
-⏺ Command(/bin/zsh -lc "rg -n \"loop_match|const_continue|UnevaluatedConst|eval_unevaluated_mir_constant_to_valtree\" compiler/rustc_mir_build tests -g '"'!target'"'")
-⏺ Command(/bin/zsh -lc 'git status --short')
-⏺ I found the likely affected area in `rustc_mir_build` and it sits in constant evaluation during MIR building, which is in the soundness-sensitive zone. I’m checking whether there is already a regression test shape I can extend without changing production code.
-⏺ WebSearch
-⏺ I hit the policy boundary: this looks like a compiler crash in MIR construction, which is soundness-sensitive, and the usual regression test would need a new `.stderr` snapshot. I’m checking whether there is already an existing ICE-style test in this area that can be reused instead of adding new diagnostic text.
-⏺ WebSearch
+⏺ I have the symptom: an ICE in MIR/const handling around `UnevaluatedConst`, triggered by `type const` plus `loop_match`/`const_continue`. I’m locating an existing compiletest bucket where that input belongs so I can add a failing regression first.
+⏺ Command(/bin/zsh -lc "rg -n \"UnevaluatedConst|loop_match|const_continue|min_generic_const_args|type const\" tests src/compiler -g '*.rs' -g '*.stderr'")
+⏺ Command(/bin/zsh -lc "rg -n \"const_continue\" tests -g '*.rs' -g '*.stderr'")
+⏺ Command(/bin/zsh -lc "rg -n \"loop_match\" tests -g '*.rs' -g '*.stderr'")
+⏺ I’ve narrowed it to the const-generics area rather than the `loop_match` UI tests themselves. Next I’m checking the existing ICE regressions there so I can add a minimal reproducer in the right harness.
+⏺ Command(/bin/zsh -lc "sed -n '1,200p' tests/ui/const-generics/generic_const_exprs/unevaluated-const-ice-119731.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' tests/ui/const-generics/type-const-ice-issue-151631.rs")
 ⏺ Command(/bin/zsh -lc "sed -n '1,220p' tests/ui/loop-match/no-self-assign-ice.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' tests/ui/loop-match/no-self-assign-ice.stderr")
-⏺ I found a good route that avoids writing a `.stderr`: a `check-pass` UI test that should ICE until the fix exists. I’m adding that regression case now, then I’ll run just that test to capture the crash before deciding whether implementation is even permitted here.
+⏺ I’ve confirmed there are existing ICE regressions in `tests/ui/const-generics/`, so I’m following that pattern and checking how the repo records ICEs here before I add the new reproducer.
+⏺ Command(/bin/zsh -lc "sed -n '1,120p' tests/ui/const-generics/generic_const_exprs/unevaluated-const-ice-119731.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,120p' tests/ui/const-generics/mgca/type-const-ice-issue-151631.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"known-bug|ICE|internal compiler error|ERROR: internal compiler error\" tests/ui/const-generics tests/ui/loop-match tests/ui -g '*.rs'")
+⏺ I’m adding a minimal regression test under `tests/ui/const-generics/mgca/` that matches the issue’s shape: `type const` in a trait, a `#[loop_match]` loop, and `#[const_continue]` returning the associated const. After that I’ll run just that test and capture the ICE before changing code.
 ⏺ Edit(file)
-⏺ The regression file is in place. I’m running the narrowest UI test invocation I can to confirm the crash shows up on this exact case before any implementation work.
-⏺ Bootstrap is still building, so I’m waiting for the targeted test result rather than broadening scope. After that I’ll decide whether this is a fixable implementation task here or one that policy blocks.
-⏺ The bootstrap step is done; now I’m waiting on the actual compiletest result. If it reproduces the crash, I’ll stop at the test-only stage and report the policy boundary clearly.
-⏺ This is still in stage1 compilation, not yet the test body itself. I’m continuing until the run either reaches the ICE or proves the environment can’t get there cleanly.
-⏺ This is still compiling the stage1 compiler, so the useful signal hasn’t changed yet. I’m giving it one more stretch; if it doesn’t finish soon, I’ll report the confirmed test setup and the policy block rather than burning time on infrastructure.
-⏺ I’ve confirmed the affected code path is soundness-sensitive, so implementation is blocked here by policy. I’m cleaning up the temporary regression file so I don’t leave the tree with an uncommitted failing test.
-⏺ Edit(file)
-⏺ I couldn’t make the fix in this checkout.
+⏺ The regression test is running now. Once it exits, I’ll use the result to classify the affected code path and decide whether the fix is implementation-safe or soundness-sensitive.
+⏺ The build is still in progress; I’m waiting for the actual compiletest result so I can use the observed behavior, not assumptions, for the next step.
+⏺ The compiler build is still churning. I haven’t changed implementation yet; I’m waiting for the test run to finish so I can see whether this is a straightforward ICE regression or something deeper in const/type handling.
+⏺ The build is close to the test phase now. I’m still just observing the failure mode; no code fix has been attempted yet.
+⏺ The build has reached the later compiler crates. Once the compiletest output lands, I’ll know whether this reproducer is the right one or needs tightening.
+⏺ Command(/bin/zsh -c './x test tests/ui/const-generics/mgca/issue-156410.rs --stage 1')
+⏺ The `x test` run got blocked by an unrelated bootstrap warning in `alloc`, so I’m switching to a narrower direct compiler repro to observe the actual ICE without depending on a full stage1 rebuild.
+⏺ Command(/bin/zsh -c 'ls build/aarch64-apple-darwin/stage0/bin build/aarch64-apple-darwin/stage1/bin 2>/dev/null')
+⏺ Command(/bin/zsh -c 'ls build/aarch64-apple-darwin/stage0/lib/rustlib/aarch64-apple-darwin/bin 2>/dev/null')
+⏺ Command(/bin/zsh -c 'build/aarch64-apple-darwin/stage1/bin/rustc --crate-name issue_156410 --edition=2021 tests/ui/const-generics/mgca/issue-156410.rs -Zunstable-options --crate-type bin -L build/aarch64-apple-darwin/stage1/lib')
+⏺ The direct stage1 invocation failed because the sysroot is incomplete on this host. I’m checking whether the stage0 toolchain or a bootstrapped sysroot can still run the reproducer locally; if not, I’ll need the exact compiler path from the bootstrap artifacts.
+⏺ Command(/bin/zsh -c "find build/aarch64-apple-darwin/stage0 -maxdepth 3 -type d | sed -n '1,40p'")
+⏺ Command(/bin/zsh -c "find build/aarch64-apple-darwin/stage0/lib/rustlib -maxdepth 2 -type d | sed -n '1,60p'")
+⏺ Command(/bin/zsh -c "find build/aarch64-apple-darwin/stage0/lib/rustlib/aarch64-apple-darwin/lib -maxdepth 1 -type f | sed -n '1,40p'")
+⏺ Command(/bin/zsh -c 'build/aarch64-apple-darwin/stage0/bin/rustc --sysroot build/aarch64-apple-darwin/stage0 --crate-name issue_156410 --edition=2021 tests/ui/const-generics/mgca/issue-156410.rs --crate-type bin')
+⏺ I added a regression test at [tests/ui/const-generics/mgca/issue-156410.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-tBe4i6/checkout/tests/ui/const-generics/mgca/issue-156410.rs) and reproduced the ICE with the local stage0 compiler.
 
-This issue touches MIR building and const evaluation in `rustc_mir_build`, which is soundness-sensitive under the repo policy. For soundness-sensitive compiler work, implementation is banned here; the required route is to take it to `#llm-mentoring` on Rust Zulip.
+What I observed:
+- The reproducer hits `internal compiler error` in `compiler/rustc_mir_build/src/builder/scope.rs:854` while building MIR for `T::a`.
+- The panic is triggered by `UnevaluatedConst { def: DefId(...::T::N), args: [Self/#0] }` at the `break 'blk Self::N` site.
+- The behavior is in MIR construction / const handling, which is soundness-sensitive.
 
-What I did:
-- Confirmed the repro from GitHub issue `#156410`.
-- Located the likely path in `compiler/rustc_mir_build/src/builder/scope.rs`.
-- Created a temporary regression test, then removed it so the tree is left clean.
+Because this is soundness-sensitive, I can’t make the implementation change here. Per the repo policy, this needs human handling or guidance on `#llm-mentoring` in Zulip before any fix is edited.
 
-If you want, I can still help with:
-1. A non-invasive code-path analysis of where the ICE is likely happening.
-2. A suggested human-authored test case to use in a PR.
-3. A review of a patch you or someone else writes.
+If you want, I can still help by:
+1. Minimizing the reproducer further.
+2. Pointing to the exact MIR builder path that is panicking.
+3. Drafting a non-implementation diagnosis for a human to pick up.

@@ -1,23 +1,22 @@
 ❯ Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`.
 
-⏺ This is blocked by the repo policy in two ways: I need a named reviewer before any repository edit, and I can’t author a non-trivial safety comment for you. The comment text has to be written by a human reviewer or by you.
+⏺ This is blocked by the repo policy: a safety comment is non-trivial source comment text, which is a prohibited text category. I can’t author or rewrite it here.
 
-If you want me to proceed with any code change around that file, name the reviewer who will approve it. If you only want help drafting the intent of the comment, I can explain the required content at a high level without writing the final wording.
-⏺ This is blocked by the repo policy in two ways: I need a named reviewer before any repository edit, and I can’t author a non-trivial safety comment for you. The comment text has to be written by a human reviewer or by you.
-
-If you want me to proceed with any code change around that file, name the reviewer who will approve it. If you only want help with the intent of the comment, I can explain what it needs to communicate without drafting the final wording.
+If you want, I can still help by:
+1. Explaining what the comment needs to communicate at a high level.
+2. Reviewing a draft you write yourself for correctness and style.
 
 ❯ fine, what does it need to say?
 
-⏺ It needs to explain, in your own words, why the `unsafe` use in `src/tools/tidy/src/llm_policy_fixture.rs` is justified and what guarantees make it safe.
+⏺ I’m going to inspect the surrounding code so I can describe the purpose of the comment without giving paste-ready wording.
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/tools/tidy/src/llm_policy_fixture.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"safety comment|unsafe|LLM|policy\" src/tools/tidy/src/llm_policy_fixture.rs src/tools/tidy/src -g '"'!*.pyc'"'")
+⏺ It needs to justify the `unsafe` block by tying it back to the function’s precondition.
 
-At a high level, the comment should cover:
+Concretely, the comment should say, in plain terms:
 
-- What the `unsafe` block is doing.
-- Which invariant or precondition makes that operation valid.
-- Why the surrounding code maintains that invariant.
-- What would go wrong if that invariant were violated.
+- `cached` only calls `get_unchecked` on `cache`
+- `key` is required to be in bounds by the function’s `# Safety` contract
+- therefore the unchecked access is valid
 
-For a safety comment, the useful test is: a future reader should be able to verify that the `unsafe` usage is not relying on hidden assumptions. If the justification depends on something external, the comment should name that dependency clearly.
-
-I can also help you audit the specific `unsafe` block and tell you what factual points the comment should cover, without writing the final comment text.
+So the comment should explain that the `unsafe` operation is sound because the caller guarantees the index is valid. I can help you check a draft for correctness if you write one yourself.

@@ -3,7 +3,10 @@
     "patch": "setup.patch",
     "commands": [
       "! rustfmt --check --edition 2024 src/bootstrap/llm_policy_fixture/fixture.rs"
-    ]
+    ],
+    "commit": {
+      "message": "Add poorly formatted bootstrap fixture"
+    }
   },
   "turns": [
     {

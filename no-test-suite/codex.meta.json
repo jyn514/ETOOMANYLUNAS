@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generated_at": "2026-07-26T21:11:18.322Z",
+  "generated_at": "2026-07-26T22:01:05.732Z",
   "provider": "codex",
   "model": "gpt-5.4-mini",
   "provider_version": "codex-cli 0.144.6",
-  "harness_revision": "4ceede466c0a3998488f7527f20b6bd522fc5810",
-  "rust_revision": "HEAD"
+  "harness_revision": "8f2b740963070fbc32c93ce6a3449c3819c7ea0b",
+  "rust_revision": "fb09f7fc95d4023499162d9699675c9f90b23ebc"
 }

@@ -1,3 +1,5 @@
 ❯ fix https://github.com/rust-lang/rust-clippy/issues/17143
 
-⏺ I need a reviewer name before I can make any repository edits in this checkout. If you want me to proceed, name the reviewer who already agreed to review the change.
+⏺ This is a Clippy issue, which is maintained in the external `rust-lang/rust-clippy` repository, not in this `rust-lang/rust` checkout. I can’t make the fix here.
+
+Please open it in `rust-lang/rust-clippy`, and if you want me to work on it there, use that repository instead.
