@@ -88,7 +88,9 @@ expectation, STOP before editing either file.
 
 Before implementation, add or find a failing test. Run it and observe the
 expected failure before any implementation edit; do not create the test and edit
-the implementation in the same step. Test-only work is allowed at this stage,
+the implementation in the same step. A test is not observed until its command
+exits and reports a result. If it is still running, continue waiting; do not edit
+implementation or begin other work. Test-only work is allowed at this stage,
 but permission to create a regression test is not permission to change
 implementation code. Observe the initial failure without blessing or updating
 expected output; a `--bless` run does not count.
