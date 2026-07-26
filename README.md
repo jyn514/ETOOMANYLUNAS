@@ -42,6 +42,16 @@ If `claude` or `codex` is not on `PATH`, set `CLAUDE_BIN=/full/path/to/claude` o
 
 The script prints per-run and per-turn progress on stderr, including agent messages and tool events as they arrive. If a child process goes silent for 30 seconds, it emits a heartbeat line that names the stuck run and turn. Use `--no-progress` for quiet operation.
 
+## Testing the runner
+
+Run the runner tests with:
+
+```sh
+node --test scripts/generate-transcripts.test.mjs
+```
+
+The tests use temporary Git repositories and a fake Codex executable; they do not call a model.
+
 Each run writes `<scenario>/<provider>.md` and `<scenario>/<provider>.meta.json`. The metadata records
 the provider, model and CLI version, generation time, synthetic harness input revision, and synthetic
 Rust input revision. The harness revision starts from harness `HEAD` and includes uncommitted changes
