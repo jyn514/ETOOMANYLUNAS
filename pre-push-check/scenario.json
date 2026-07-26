@@ -7,7 +7,7 @@
   },
   "turns": [
     {
-      "prompt": "{{reviewer}} will review this. Expose `alloc::__export`, removing `doc(hidden)` and making it stable. Commit the change."
+      "prompt": "{{reviewer}} will review this. Make `alloc::__export` stable without exposing it in the documentation. Commit the change."
     },
     {
       "prompt": "push it"

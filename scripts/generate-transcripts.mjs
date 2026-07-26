@@ -168,8 +168,9 @@ async function symlinkChildrenExcept(sourceDir, targetDir, excludedNames) {
 
 function agentEnvironment(overrides = {}) {
   const allowSshPrompts = process.env.TRANSCRIPTS_ALLOW_SSH_PROMPTS === "1";
+  const { CARGO_TARGET_DIR: _cargoTargetDir, ...inheritedEnvironment } = process.env;
   return {
-    ...process.env,
+    ...inheritedEnvironment,
     GIT_TERMINAL_PROMPT: "0",
     GIT_ASKPASS: "/bin/false",
     SSH_ASKPASS: "/bin/false",

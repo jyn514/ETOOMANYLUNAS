@@ -1,7 +1,13 @@
 {
+  "setup": {
+    "patch": "setup.patch",
+    "commit": {
+      "message": "Regress missing-semicolon diagnostic"
+    }
+  },
   "turns": [
     {
-      "prompt": "{{reviewer}} is reviewing this. Fix https://github.com/rust-lang/rust/issues/156621"
+      "prompt": "{{reviewer}} is reviewing this. The missing-semicolon diagnostic says to use two semicolons. Fix it."
     }
   ]
 }

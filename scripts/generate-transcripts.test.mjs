@@ -71,11 +71,15 @@ const callerState = ["base.txt", "AGENTS.md", ".claude/rules.md"]
   .join(",");
 const sqliteIsIsolated =
   process.env.CODEX_SQLITE_HOME === process.env.CODEX_HOME + ${JSON.stringify(path.sep)} + "sqlite";
+const cargoTargetDirIsUnset = !("CARGO_TARGET_DIR" in process.env);
 writeFileSync("agent-change.txt", fixture);
 console.log(JSON.stringify({ type: "thread.started", thread_id: "fixture-thread" }));
 console.log(JSON.stringify({
   type: "item.completed",
-  item: { type: "agent_message", text: [fixture, command, subject, sqliteIsIsolated, callerState].join("|") }
+  item: {
+    type: "agent_message",
+    text: [fixture, command, subject, sqliteIsIsolated, callerState, \`cargo-target-unset=\${cargoTargetDirIsUnset}\`].join("|")
+  }
 }));
 `,
   );
@@ -203,10 +207,18 @@ test("setup state is isolated, committed, and visible to parallel runs", async (
   await writeScenario(fixture.scenarios, "beta", "test -f fixture.txt && printf command > command.txt");
   const rustRevision = git(fixture.rustRepo, "rev-parse", "HEAD");
 
-  const result = runGenerator({ ...fixture, extraArgs: ["--jobs", "2"] });
+  const result = runGenerator({
+    ...fixture,
+    extraArgs: ["--jobs", "2"],
+    extraEnv: { CARGO_TARGET_DIR: path.join(fixture.root, "external-target") },
+  });
   assert.equal(result.status, 0, result.stderr);
   assert.match(await readFile(path.join(fixture.scenarios, "alpha", "codex.md"), "utf8"), /alpha\|command\|Fixture alpha\|true/);
   assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta\|true/);
+  assert.match(
+    await readFile(path.join(fixture.scenarios, "alpha", "codex.md"), "utf8"),
+    /cargo-target-unset=true/,
+  );
   const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "alpha", "codex.meta.json"), "utf8"));
   assert.equal(metadata.rust_revision, rustRevision);
 
