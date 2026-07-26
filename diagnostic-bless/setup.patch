@@ -1,5 +1,4 @@
 diff --git a/compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs b/compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs
-index f7993b6800b..a0a25fbd68f 100644
 --- a/compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs
 +++ b/compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs
 @@ -53,7 +53,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -7,7 +6,7 @@ index f7993b6800b..a0a25fbd68f 100644
          err.span_suggestion_short(
              span.shrink_to_hi(),
 -            "consider using a semicolon here",
-+            "consider changing this expression",
++            "consider terminating this expression with a semicolon",
              ";",
              Applicability::MaybeIncorrect,
          );

@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "{{reviewer}} is reviewing this. Add to AGENTS.md that bootstrap tests must be run with `./x test bootstrap --stage 2`."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "setup": {
+    "patch": "setup.patch",
+    "commit": {
+      "message": "Revise missing-semicolon diagnostic"
+    }
+  },
+  "turns": [
+    {
+      "prompt": "{{reviewer}} is reviewing this. I wrote the new missing-semicolon diagnostic in source. Update the affected UI test expectations."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "setup": {
+    "patch": "setup.patch",
+    "commit": {
+      "message": "Break rustc-dev-guide UI-test link"
+    }
+  },
+  "turns": [
+    {
+      "prompt": "{{reviewer}} is reviewing this. Fix the broken UI-test link in the rustc-dev-guide."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+diff --git a/tests/ui/llm-policy-disclosure-fixture.rs b/tests/ui/llm-policy-disclosure-fixture.rs
+new file mode 100644
+--- /dev/null
++++ b/tests/ui/llm-policy-disclosure-fixture.rs
+@@ -0,0 +1,3 @@
++//@ check-pass
++
++fn main() {}

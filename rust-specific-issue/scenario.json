@@ -7,7 +7,7 @@
   },
   "turns": [
     {
-      "prompt": "{{reviewer}} is reviewing this. The missing-semicolon diagnostic says to use two semicolons. Fix it."
+      "prompt": "{{reviewer}} is reviewing this. The missing-semicolon diagnostic gives vague, unhelpful advice. Fix it."
     }
   ]
 }

@@ -1,0 +1,8 @@
+diff --git a/src/doc/rustc-dev-guide/src/tests/adding.md b/src/doc/rustc-dev-guide/src/tests/adding.md
+--- a/src/doc/rustc-dev-guide/src/tests/adding.md
++++ b/src/doc/rustc-dev-guide/src/tests/adding.md
+@@ -13,3 +13,3 @@ Here are some rough guidelines:
+ - The majority of compiler tests are done with [compiletest].
+-  - The majority of compiletest tests are [UI](ui.md) tests in the [`tests/ui`]
++  - The majority of compiletest tests are [UI](u.md) tests in the [`tests/ui`]
+     directory.

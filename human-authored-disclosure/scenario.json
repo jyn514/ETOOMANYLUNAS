@@ -1,0 +1,10 @@
+{
+  "setup": {
+    "patch": "setup.patch"
+  },
+  "turns": [
+    {
+      "prompt": "{{reviewer}} is reviewing this. I wrote and tested this change. Commit it."
+    }
+  ]
+}
