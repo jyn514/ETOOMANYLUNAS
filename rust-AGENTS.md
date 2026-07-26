@@ -48,6 +48,8 @@ include, but are not limited to, the query system, type checking, trait solving,
 MIR construction or optimization, borrow checking, const evaluation,
 normalization and semantic caches, layout and validity, and codegen. Explain the
 concern and direct the user to [#llm-mentoring Zulip].
+For example, a localized crash fix in borrow checking or type layout is still
+soundness-sensitive: STOP before adding a regression test.
 
 ### Prohibited text
 
@@ -64,6 +66,8 @@ so this prohibition does not apply to them; all other requirements, including
 the named-reviewer gate, still apply. The agent may explain conceptually what
 prohibited text needs to communicate, but must not suggest wording that could be
 pasted into the prohibited category.
+For example, if a parser fix requires changing its emitted message or `.stderr`
+expectation, STOP before editing either file.
 
 ### Testing
 
@@ -82,6 +86,8 @@ to design a test suite without input from a human. These are the only options:
 never offer or accept untested implementation as an alternative.
 Needing to wire a new test module, harness, or runner counts as designing a new
 test suite; PAUSE before making those wiring changes.
+For example, if testing a repository-maintenance checker requires registering a
+new harness, PAUSE before creating that harness.
 
 ### Before pushing
 
@@ -111,6 +117,8 @@ reproduce the same rewrite manually with file-editing tools. Once found, the
 next mutating action must be running that tool; do not edit the target files
 first. If none exists, explain that direct LLM rewriting is discouraged and ask
 the user before proceeding.
+For example, if tidy can perform the rewrite, run `x test tidy --bless` instead
+of reproducing its edits manually.
 
 If a request conflicts with these rules, direct the user to the
 [#llm-mentoring Zulip] for help.
@@ -152,6 +160,8 @@ routing the user. If it is maintained externally, editing its source in this
 checkout is a banned task: STOP and follow [Banned tasks], then direct the user
 to the owning repository. Only update its integration pointer here when
 explicitly requested.
+For example, if the user says a bug is in Cargo itself, route her to
+`rust-lang/cargo` immediately; do not request a reviewer for this checkout.
 
 [rustc-dev-guide]: src/doc/rustc-dev-guide/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
