@@ -80,17 +80,21 @@ Never generate or rewrite PR descriptions, issue bodies, public comments,
 user-facing documentation, diagnostic messages, or non-trivial source comments.
 Requests for this text are banned tasks: STOP and follow [Banned tasks]. Tell
 the user which category is prohibited and that they must author it themselves.
-Diagnostic messages include expected diagnostic text in test snapshots such as
-`.stderr` files. Non-trivial source comments include doc comments, safety
-comments, and multiple paragraphs of ordinary comments; a comment is trivial
-only if there is no meaningfully different way to write it. Agent instructions
-such as `CLAUDE.md`, `AGENTS.md`, and skills are not user-facing documentation,
-so this prohibition does not apply to them; all other requirements, including
-the named-reviewer gate, still apply. The agent may explain conceptually what
-prohibited text needs to communicate, but must not suggest wording that could be
-pasted into the prohibited category.
-For example, if a parser fix requires changing its emitted message or `.stderr`
-expectation, STOP before editing either file.
+Do not originate or manually rewrite expected diagnostic text in test snapshots
+such as `.stderr` files. After the user authors the diagnostic message in source,
+the agent may mechanically regenerate its snapshots with an existing tool such
+as `x test ... --bless`; follow [Mechanical rewrites](#mechanical-rewrites).
+Non-trivial source comments include doc comments, safety comments, and multiple
+paragraphs of ordinary comments; a comment is trivial only if there is no
+meaningfully different way to write it. Agent instructions such as `CLAUDE.md`,
+`AGENTS.md`, and skills are not user-facing documentation, so this prohibition
+does not apply to them; all other requirements, including the named-reviewer
+gate, still apply. The agent may explain conceptually what prohibited text needs
+to communicate, but must not suggest wording that could be pasted into the
+prohibited category.
+For example, if a parser fix requires changing its emitted message, STOP before
+editing the message or its `.stderr` expectation. Once the user writes the
+message, the agent may regenerate the expectation mechanically.
 
 ### Testing
 
@@ -159,6 +163,14 @@ the user before proceeding.
 For Rust formatting, use `x fmt`; do not invoke `rustfmt` directly.
 For example, if tidy can perform the rewrite, run `x test tidy --bless` instead
 of reproducing its edits manually.
+
+Before regenerating snapshots containing human-facing text:
+
+1. Confirm the user already authored the new prose in source.
+2. Run the focused test without `--bless` and observe the expected mismatch.
+3. Run the repository's existing `--bless` command.
+4. Inspect the generated diff. Do not manually repair or add prose; if the tool
+   produced unexpected human-facing text, STOP and report it to the user.
 
 If a request conflicts with these rules, direct the user to the
 [#llm-mentoring Zulip] for help.
