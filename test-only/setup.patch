@@ -1,0 +1,13 @@
+diff --git a/src/bootstrap/src/core/config/flags.rs b/src/bootstrap/src/core/config/flags.rs
+index ad30a14caea..a7017e05d5c 100644
+--- a/src/bootstrap/src/core/config/flags.rs
++++ b/src/bootstrap/src/core/config/flags.rs
+@@ -422,7 +422,7 @@ pub enum Subcommand {
+         /// enable this to generate a Rustfix coverage file, which is saved in
+         /// `/<build_base>/rustfix_missing_coverage.txt`
+         rustfix_coverage: bool,
+-        #[arg(long)]
++        #[arg(long, alias = "nocapture")]
+         /// don't capture stdout/stderr of tests
+         no_capture: bool,
+         #[arg(long, default_value_t = true, action = clap::ArgAction::Set, default_missing_value = "true", num_args = 0..=1, require_equals = true)]

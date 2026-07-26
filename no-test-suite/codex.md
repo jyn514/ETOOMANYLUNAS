@@ -1,149 +1,95 @@
 ❯ jyn is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries.
 
-⏺ I’m checking the existing build/test surface first so I can add a regression test before touching implementation. Then I’ll verify the affected `rustc_llvm` path and make the minimal change.
-⏺ Bash(/bin/zsh -lc 'rg -n "llvm-config" src build -S')
-⏺ Bash(/bin/zsh -lc 'pwd && rg -n "rustc_llvm|llvm-config|ignore-libllvm" -S .')
-⏺ I found the relevant code path in `compiler/rustc_llvm/build.rs`. Next I’m reading the build script and nearby tests to see whether this is already covered by a unit-style test or whether I need to add one in the existing bootstrap test suite.
-⏺ Bash(/bin/zsh -lc "sed -n '260,520p' compiler/rustc_llvm/build.rs")
-⏺ Bash(/bin/zsh -lc "sed -n '1,260p' compiler/rustc_llvm/build.rs")
-⏺ Bash(/bin/zsh -lc "sed -n '360,520p' src/bootstrap/src/core/builder/tests.rs")
-⏺ I found there isn’t an existing unit test for this exact command-line construction, so I’m adding a narrow build-script test first. It will fail until I wire the `--ignore-libllvm` flag into the `llvm-config` invocation.
+⏺ I’m checking the LLVM configuration path first, then I’ll add a focused regression test and run it to capture the failure before touching implementation.
+⏺ Command(/bin/zsh -lc "rg -n \"llvm-config|ignore-libllvm|rustc_llvm\" -S src tests -g '"'!**/target/**'"'")
+⏺ I found the bootstrap code path. Next I’m reading the targeted test coverage around `rustc_llvm_env` so I can add a regression test that fails on the current behavior.
+⏺ Command(/bin/zsh -lc "sed -n '1,260p' src/bootstrap/src/core/build_steps/llvm.rs")
+⏺ Command(/bin/zsh -lc "sed -n '340,520p' src/bootstrap/src/core/builder/tests.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1420,1505p' src/bootstrap/src/core/build_steps/compile.rs")
+⏺ I’ve confirmed there’s already unit coverage in bootstrap, so I’m looking for the narrowest test seam that can observe the `LLVM_CONFIG` command-line environment without restructuring production code.
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/core/build_steps/compile.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"struct Cargo|fn env\\(|LLVM_CONFIG|ignore-libllvm\" src/bootstrap/src/core -S")
+⏺ Command(/bin/zsh -lc "sed -n '1,260p' src/bootstrap/src/core/builder.rs")
+⏺ I’ve got the compile-side call site. The remaining question is the best way to observe its environment wiring, so I’m reading the bootstrap cargo wrapper and its tests next.
+⏺ Command(/bin/zsh -lc "sed -n '1,280p' src/bootstrap/src/core/builder/cargo.rs")
+⏺ Command(/bin/zsh -lc "sed -n '280,520p' src/bootstrap/src/core/builder/cargo.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"struct Cargo|envs|get_env|into_command|command\\(\" src/bootstrap/src/core/builder/cargo.rs src/bootstrap/src/core/builder/tests.rs -S")
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/core/builder/tests.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"#\\[test\\]|mod tests|get_envs|RUSTC_HOST_FLAGS|CARGO_TARGET_\" src/bootstrap/src/core/builder/cargo.rs -S")
+⏺ Command(/bin/zsh -lc "sed -n '1160,1210p' src/bootstrap/src/core/builder/cargo.rs")
+⏺ I found the actual `llvm-config --libdir` invocation in the bootstrap cargo path. I’m now checking whether the wrapper already supports an `--ignore-libllvm` switch and whether there’s an existing test seam for that command.
+⏺ Command(/bin/zsh -lc "rg -n \"run_capture_stdout|cached\\(\\)\\.arg\\(\\\"--libdir\\\"\\)\" src/bootstrap/src/core -S")
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/utils/exec.rs")
+⏺ Command(/bin/zsh -lc 'rg -n "ignore-libllvm|libllvm" src/bootstrap src -S')
+⏺ I have the command-execution internals now. I’m checking for an existing test helper that can inspect the exact `llvm-config` arguments/envs; if not, I’ll add a small unit test around the command fingerprint path.
+⏺ Command(/bin/zsh -lc "rg -n \"llvm_config\\(|llvm-config\" src/bootstrap/src/core/builder/cargo.rs src/bootstrap/src/core/build_steps/compile.rs src/bootstrap/src/core/build_steps/llvm.rs -S")
+⏺ Command(/bin/zsh -lc "sed -n '520,760p' src/bootstrap/src/core/builder/cargo.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"CommandFingerprint|get_envs\\(|format_short_cmd|envs\\)\" src/bootstrap/src/core -S")
+⏺ Command(/bin/zsh -lc "rg -n \"get_envs\\(\" src/bootstrap/src/core/build_steps/test.rs src/bootstrap/src/core/builder/tests.rs src/bootstrap/src/core/builder/cargo.rs -S")
+⏺ Command(/bin/zsh -lc 'rg -n "pub fn get_envs|fn get_envs|struct BootstrapCommand|impl BootstrapCommand" src/bootstrap/src/utils/exec.rs src/bootstrap/src -S')
+⏺ Command(/bin/zsh -lc "sed -n '220,360p' src/bootstrap/src/core/build_steps/test.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"#\\[cfg\\(test\\)\\]|mod tests\" src/bootstrap/src/core/build_steps/compile.rs -S")
+⏺ Command(/bin/zsh -lc "sed -n '2800,2920p' src/bootstrap/src/core/build_steps/compile.rs")
+⏺ Command(/bin/zsh -lc "sed -n '2920,3040p' src/bootstrap/src/core/build_steps/compile.rs")
+⏺ I’ve narrowed this to a specific command builder, not the LLVM type system or codegen. That means it’s not soundness-sensitive; I can stay in bootstrap plumbing and test the exact `llvm-config` invocation.
+⏺ Command(/bin/zsh -lc "sed -n '1120,1205p' src/bootstrap/src/core/builder/cargo.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/src/utils/exec.rs")
+⏺ Command(/bin/zsh -lc "sed -n '246,340p' src/bootstrap/src/utils/exec.rs")
+⏺ I’ve got a direct observation strategy: make bootstrap run a fake `llvm-config` that records its argv, then assert `--ignore-libllvm` is present. I’m checking the test utilities so I can wire that up cleanly without touching production structure yet.
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/utils/tests.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"struct TestCtx|tempdir|tmpdir|write\\(\" src/bootstrap/src/utils/tests -S")
+⏺ Command(/bin/zsh -lc "rg -n \"create_temp|tempfile|tempdir|write\\(\" src/bootstrap/src/utils/tests.rs src/bootstrap/src/utils/tests -S")
+⏺ Command(/bin/zsh -lc "sed -n '1,140p' src/bootstrap/src/utils/tests/git.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/src/utils/tests/mod.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"fn config\\(|create_config\\(|paths\\b\" src/bootstrap/src/utils/tests/mod.rs -S")
+⏺ I’ve got enough to write the regression test. I’m adding a bootstrap unit test that runs `builder.cargo(...)` against a fake `llvm-config` and checks the recorded argv before I change the implementation.
 ⏺ Edit(file)
-⏺ I’ve hit the usual build-script testing awkwardness, so I’m checking whether this repo already has a pattern for exercising `build.rs` logic directly. If not, I’ll need to route through an existing bootstrap test helper instead of inventing a new harness.
-⏺ Bash(/bin/zsh -lc "rg -n \"#\\[cfg\\(test\\)\\] mod tests\" compiler/*/build.rs src/bootstrap/src -S")
-⏺ Bash(/bin/zsh -lc "rg -n \"build.rs\" compiler -g '*test*' -S")
-⏺ Bash(/bin/zsh -lc 'cargo test -p rustc_llvm --lib --no-run')
-⏺ The test compile is in flight. If it fails the way I expect, I’ll switch from test discovery to the minimal implementation change and then rerun the same check.
-⏺ The failure was the expected one from the missing helper path, not from the flag logic itself. This is not soundness-sensitive; it only changes how `rustc_llvm` queries linker inputs from `llvm-config`.
+⏺ The regression test is in place. I’m running just that bootstrap test now to capture the current failure before I touch the implementation.
+⏺ Command(/bin/zsh -lc 'cargo test -p bootstrap test_rustc_llvm_uses_ignore_libllvm_for_llvm_config_libdir -- --nocapture')
+⏺ The test is still running; I’m waiting for the result so I can confirm the exact failure mode before changing code.
+⏺ `cargo test -p bootstrap` isn’t the right package name in this workspace. I’m locating the bootstrap crate and rerunning the regression test through the correct package target.
+⏺ Command(/bin/zsh -lc 'rg -n "''^name = '"\\\"bootstrap\\\"|\\[package\\]\" src/bootstrap/Cargo.toml Cargo.toml -S")
+⏺ Command(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/Cargo.toml")
+⏺ Command(/bin/zsh -lc 'cargo test --manifest-path src/bootstrap/Cargo.toml test_rustc_llvm_uses_ignore_libllvm_for_llvm_config_libdir -- --nocapture')
+⏺ The first run hit an environment lockfile outside the workspace. I’m rerunning with an in-tree Cargo target/home so I can get the test result cleanly.
+⏺ Cargo is building the bootstrap crate now; I’m waiting for the regression to execute so I can see the assertion fail on the current code.
+⏺ Compilation is still in flight. Once it reaches the test, I expect the new assertion to fail immediately, which will confirm the gap cleanly.
+⏺ Command(/bin/zsh -lc 'CARGO_HOME=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-home CARGO_TARGET_DIR=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml test_rustc_llvm_uses_ignore_libllvm_for_llvm_config_libdir -- --nocapture')
+⏺ The first test attempt exposed two issues: the harness can’t call the private `builder.cargo` path directly, and I need a public entry point that still reaches the `llvm-config --libdir` call. I’m switching to that seam instead of widening production visibility.
+⏺ Command(/bin/zsh -lc "sed -n '1,80p' src/bootstrap/src/core/builder/tests.rs")
+⏺ Command(/bin/zsh -lc "rg -n \"pub fn from_build_compiler|from_build_compiler\\(\" src/bootstrap/src/core/build_steps/tool.rs src/bootstrap/src/core/build_steps/test.rs src/bootstrap/src/core/build_steps/compile.rs -S")
+⏺ Command(/bin/zsh -lc "sed -n '760,860p' src/bootstrap/src/core/build_steps/tool.rs")
+⏺ I’ve got the correct seam now: a unit test inside `builder/cargo.rs` can call the private constructor path and observe the fake `llvm-config` execution. I’m moving the regression there, dropping the broken test attempt, and then I’ll patch the command to add `--ignore-libllvm`.
 ⏺ Edit(file)
-⏺ I’ve wired the flag into the command construction. I’m now exercising the build script with a tiny fake `llvm-config` so the test can actually run through the relevant branch instead of failing on unrelated bootstrap environment requirements.
-⏺ Bash(/bin/zsh -lc 'tmpdir=$(mktemp -d)
-cat > "$tmpdir/llvm-config" <<'"'EOF'
-#"'!/bin/sh
-case "$1" in
-  --help)
-    echo '"'usage: llvm-config [--quote-paths]'
-    exit 0
-    ;;
-  --components)
-    echo 'ipo bitreader bitwriter linker asmparser lto coverage instrumentation'
-    exit 0
-    ;;
-  --cxxflags)
-    echo '-std=c++17'
-    exit 0
-    ;;
-  --link-static)
-    shift
-    if [ \""'$1" = "--libs" ]; then
-      echo '"'-lLLVMCore'
-      exit 0
-    fi
-    if [ \""'$1" = "--ldflags" ]; then
-      echo '"''
-      exit 0
-    fi
-    ;;
-esac
-echo ''
-exit 0
-EOF
-chmod +x \""'$tmpdir/llvm-config"
-REAL_LIBRARY_PATH_VAR=DYLD_LIBRARY_PATH REAL_LIBRARY_PATH= LLVM_CONFIG="$tmpdir/llvm-config" cargo test -p rustc_llvm --lib --no-run')
-⏺ The first verification run was blocked by Cargo’s shared cache lock in the home directory, so I’m rerunning with a temporary `CARGO_HOME` to keep the check self-contained.
-⏺ Bash(/bin/zsh -lc 'tmpdir=$(mktemp -d)
-cat > "$tmpdir/llvm-config" <<'"'EOF'
-#"'!/bin/sh
-case "$1" in
-  --help)
-    echo '"'usage: llvm-config [--quote-paths]'
-    exit 0
-    ;;
-  --components)
-    echo 'ipo bitreader bitwriter linker asmparser lto coverage instrumentation'
-    exit 0
-    ;;
-  --cxxflags)
-    echo '-std=c++17'
-    exit 0
-    ;;
-  --link-static)
-    shift
-    if [ \""'$1" = "--libs" ]; then
-      echo '"'-lLLVMCore'
-      exit 0
-    fi
-    if [ \""'$1" = "--ldflags" ]; then
-      echo '"''
-      exit 0
-    fi
-    ;;
-esac
-echo ''
-exit 0
-EOF
-chmod +x \""'$tmpdir/llvm-config"
-CARGO_HOME="$tmpdir/cargo-home" REAL_LIBRARY_PATH_VAR=DYLD_LIBRARY_PATH REAL_LIBRARY_PATH= LLVM_CONFIG="$tmpdir/llvm-config" cargo test -p rustc_llvm --lib --no-run')
-⏺ The isolated Cargo run is now past setup and building dependencies. I’m waiting for it to finish so I can confirm the testable change held up end-to-end.
-⏺ Cargo is still trying to write into the shared default target cache, so I’m forcing a private target dir as well. That should keep the check fully inside the workspace/tmp area.
-⏺ The rerun is proceeding in the private target directory now. If it finishes cleanly, I’ll have a real compile check on the change rather than just a textual patch review.
-⏺ Bash(/bin/zsh -lc 'tmpdir=$(mktemp -d)
-cat > "$tmpdir/llvm-config" <<'"'EOF'
-#"'!/bin/sh
-case "$1" in
-  --help)
-    echo '"'usage: llvm-config [--quote-paths]'
-    exit 0
-    ;;
-  --components)
-    echo 'ipo bitreader bitwriter linker asmparser lto coverage instrumentation'
-    exit 0
-    ;;
-  --cxxflags)
-    echo '-std=c++17'
-    exit 0
-    ;;
-  --link-static)
-    shift
-    if [ \""'$1" = "--libs" ]; then
-      echo '"'-lLLVMCore'
-      exit 0
-    fi
-    if [ \""'$1" = "--ldflags" ]; then
-      echo '"''
-      exit 0
-    fi
-    ;;
-esac
-echo ''
-exit 0
-EOF
-chmod +x \""'$tmpdir/llvm-config"
-CARGO_HOME="$tmpdir/cargo-home" CARGO_TARGET_DIR="$tmpdir/target" REAL_LIBRARY_PATH_VAR=DYLD_LIBRARY_PATH REAL_LIBRARY_PATH= LLVM_CONFIG="$tmpdir/llvm-config" cargo test -p rustc_llvm --lib --no-run')
-⏺ The build-script run got far enough to exercise the relevant logic and then failed on the intentionally fake LLVM headers, which is separate from this change. I’m doing a quick source check for formatting and to make sure the helper is placed cleanly.
-⏺ Bash(/bin/zsh -lc "sed -n '90,180p' compiler/rustc_llvm/build.rs")
-⏺ Bash(/bin/zsh -lc "sed -n '300,360p' compiler/rustc_llvm/build.rs")
-⏺ The source shape is right, but I want the formatting aligned before I wrap. I’m running `rustfmt` on the touched file only, not the whole tree.
-⏺ Bash(/bin/zsh -lc 'rustfmt compiler/rustc_llvm/build.rs')
-⏺ `rustfmt` can’t run on this file with the repo’s current edition settings because the file already uses `let` chains. I’m leaving the existing style intact and doing one last diff sanity check.
-⏺ Bash(/bin/zsh -lc 'git diff -- compiler/rustc_llvm/build.rs')
-⏺ Bash(/bin/zsh -lc 'git status --short')
-⏺ The diff exposed one accidental indentation shift and the test helper call still needs to match the implemented behavior. I’m correcting both now so the file is internally consistent.
-⏺ The patch context drifted after the earlier edit. I’m reopening the affected slice and then I’ll apply a precise fix.
-⏺ Bash(/bin/zsh -lc "sed -n '420,455p' compiler/rustc_llvm/build.rs")
-⏺ Bash(/bin/zsh -lc "sed -n '535,565p' compiler/rustc_llvm/build.rs")
 ⏺ Edit(file)
-⏺ The source is cleaned up now. I’m doing a final diff pass to make sure the only behavioral change is the new `--ignore-libllvm` flag on the `llvm-config --libs` invocation.
-⏺ Bash(/bin/zsh -lc 'git diff -- compiler/rustc_llvm/build.rs')
-⏺ Implemented in [`compiler/rustc_llvm/build.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-ROYEWr/checkout/compiler/rustc_llvm/build.rs).
+⏺ The first version of the new test was checking the wrong layer. I’m tightening it to verify the fake `llvm-config` argv directly, which is the behavior this change actually controls.
+⏺ Edit(file)
+⏺ The code and the regression now line up. I’m rerunning the focused bootstrap test to confirm the new `llvm-config` flag is actually emitted.
+⏺ The rebuild is underway. I’m waiting for the test result; if it still fails, I’ll adjust the harness, otherwise I’ll verify the broader diff.
+⏺ Still waiting on the test process. The slow part here is bootstrap recompilation, not the assertion itself.
+⏺ Command(/bin/zsh -lc 'CARGO_HOME=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-home CARGO_TARGET_DIR=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml llvm_config_libdir_passes_ignore_libllvm -- --nocapture')
+⏺ The full bootstrap path is too heavy for the regression test because it wants a real stage0 sysroot. I’m factoring the `llvm-config` argv construction into a tiny helper so the test can validate the exact command line directly, while the production path keeps using it.
+⏺ Edit(file)
+⏺ The regression is now isolated to the command builder itself. I’m rerunning the focused test, and this time it should exercise the exact argv without depending on a stage0 toolchain.
+⏺ Command(/bin/zsh -lc 'CARGO_HOME=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-home CARGO_TARGET_DIR=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml llvm_config_libdir_passes_ignore_libllvm -- --nocapture')
+⏺ The code is recompiling with the helper in place. I’m waiting for the test result and then I’ll do a quick sanity pass on the diff.
+⏺ The helper needs a path-to-OsStr conversion and an owned return, not a chained mutable reference. I’m fixing that and rerunning the same focused test.
+⏺ Edit(file)
+⏺ The helper signature is fixed. I’m running the regression again to confirm the command now includes `--ignore-libllvm`.
+⏺ The build is still in progress. If the test passes, I’ll stop there; if not, I’ll inspect the helper output rather than broadening the change.
+⏺ Command(/bin/zsh -lc 'CARGO_HOME=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-home CARGO_TARGET_DIR=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml llvm_config_libdir_passes_ignore_libllvm -- --nocapture')
+⏺ The helper now builds the right argv, but the test is tripping bootstrap’s drop bomb because it never executes the command. I’m making the test intentionally leak that one command handle after inspecting its args, which is fine for a unit test.
+⏺ Edit(file)
+⏺ The regression is adjusted for the command wrapper’s drop semantics. I’m rerunning it once more to verify the final shape of the change.
+⏺ Command(/bin/zsh -lc 'CARGO_HOME=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-home CARGO_TARGET_DIR=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml llvm_config_libdir_passes_ignore_libllvm -- --nocapture')
+⏺ The last compile is underway. I’m waiting for the verdict; if it passes, I’ll report the exact files changed and note the test command.
+⏺ The focused regression passes. I’m doing a quick diff check now to confirm the final shape is just the helper, the flag, and the test.
+⏺ Command(/bin/zsh -lc 'git diff -- src/bootstrap/src/core/builder/cargo.rs src/bootstrap/src/core/builder/tests.rs')
+⏺ Command(/bin/zsh -lc 'git status --short')
+⏺ Added `--ignore-libllvm` to the `llvm-config` invocation used by `rustc_llvm` for `--libdir`, and added a unit test to lock the argv down.
 
-What changed:
-- Added a small helper for the `llvm-config --libs` command.
-- Passed `--ignore-libllvm` on that invocation.
-- Added a regression test that checks the helper includes the flag.
+Changed:
+- [`src/bootstrap/src/core/builder/cargo.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-RqZPin/checkout/src/bootstrap/src/core/builder/cargo.rs)
 
 Verification:
-- I ran a targeted `cargo test -p rustc_llvm --lib --no-run` with a fake `llvm-config`.
-- That got far enough to exercise the build script path, but the run stopped later because the fake LLVM setup does not provide `llvm/Config/llvm-config.h`. That failure is unrelated to the flag change.
-
-If you want, I can also wire up a more isolated test around the exact argv construction so the regression is observable without needing the C++ compile step.
+- `CARGO_HOME=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-home CARGO_TARGET_DIR=/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/cargo-target cargo test --manifest-path src/bootstrap/Cargo.toml llvm_config_libdir_passes_ignore_libllvm -- --nocapture`

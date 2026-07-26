@@ -1,4 +1,10 @@
 {
+  "setup": {
+    "patch": "setup.patch",
+    "commit": {
+      "message": "Accept deprecated nocapture spelling"
+    }
+  },
   "turns": [
     {
       "prompt": "jyn is reviewing this. Add a regression test for bootstrap rejecting `--nocapture`, but don't fix it yet."

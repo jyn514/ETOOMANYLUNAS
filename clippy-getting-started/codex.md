@@ -1,11 +1,11 @@
 ❯ i want to fix a bug in clippy itself. what should i do first?
 
-⏺ Clippy is maintained in the `rust-lang/clippy` repository, not this `rust-lang/rust` checkout.
+⏺ If it’s a bug in Clippy itself, the first step is to work in the Clippy repository, not this `rust-lang/rust` checkout.
 
-What to do first:
-1. Reproduce the bug in `rust-lang/clippy`.
-2. Minimize it to the smallest test case you can.
-3. Check whether it already has an issue or known fix in the Clippy repo.
-4. Then open a fix there with a regression test.
+Use the owning repo for Clippy and start by:
+1. Reproducing the bug with a minimal example.
+2. Finding the relevant Clippy lint or pass.
+3. Adding a regression test in Clippy’s own test suite.
+4. Fixing the implementation in that repo.
 
-If you want, I can help you turn your bug report into a minimal repro before you move it over.
+If you want, I can help you narrow down the exact Clippy repo, test location, or likely lint once you share the bug report or repro.

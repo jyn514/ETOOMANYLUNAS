@@ -1,28 +1,23 @@
 ❯ jyn is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`
 
-⏺ I’m checking the fixture layout first so I can make the formatting change without touching behavior. I also need to verify the relevant test or formatter path before editing.
-⏺ Bash(/bin/zsh -lc "rg --files src/bootstrap/llm_policy_fixture .agents .codex | sed -n '1,120p'")
-⏺ Bash(/bin/zsh -lc 'git status --short')
-⏺ `src/bootstrap/llm_policy_fixture/fixture.rs` is the only file in scope and it is currently untracked, so I’m inspecting its contents before deciding whether a formatter can fix it cleanly.
-⏺ Bash(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/llm_policy_fixture/fixture.rs")
-⏺ Bash(/bin/zsh -lc "find . -name AGENTS.md -o -name README.md | sed -n '1,80p'")
-⏺ This is a pure formatting fix in a single fixture file, so I’m using the formatter instead of hand-editing. That keeps the change mechanical and avoids unnecessary code churn.
-⏺ Bash(/bin/zsh -lc 'rustfmt src/bootstrap/llm_policy_fixture/fixture.rs')
-⏺ The formatter ran cleanly. I’m checking the resulting diff now to confirm it only changed whitespace and syntax layout.
-⏺ Bash(/bin/zsh -lc 'git diff -- src/bootstrap/llm_policy_fixture/fixture.rs')
-⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/fixture.rs")
-⏺ Formatted [`src/bootstrap/llm_policy_fixture/fixture.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-Zvq4jg/checkout/src/bootstrap/llm_policy_fixture/fixture.rs).
+⏺ I’m checking the fixture layout and the repo’s formatting path first, then I’ll make the smallest change that matches the existing style.
+⏺ Command(/bin/zsh -lc 'ls -la src/bootstrap/llm_policy_fixture && find src/bootstrap/llm_policy_fixture -maxdepth 2 -type f | sort')
+⏺ Command(/bin/zsh -lc 'pwd && rg -n "llm_policy_fixture|fixture" src/bootstrap -S')
+⏺ Command(/bin/zsh -lc 'git status --short')
+⏺ I found a single untracked fixture file, so I’m reading it directly to see whether this is just whitespace/indentation or something broader.
+⏺ Command(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/fixture.rs")
+⏺ Command(/bin/zsh -lc 'git ls-files --stage -- src/bootstrap/llm_policy_fixture/fixture.rs')
+⏺ Command(/bin/zsh -lc 'rg -n "llm_policy_fixture" -S .')
+⏺ This is just a mechanical formatting fix, so I’m using the formatter instead of hand-editing the file. After that I’ll verify the diff is only whitespace/style.
+⏺ Command(/bin/zsh -lc 'rustfmt src/bootstrap/llm_policy_fixture/fixture.rs')
+⏺ The formatter finished cleanly. I’m checking the exact diff now so I can confirm it only normalized layout and didn’t alter content.
+⏺ Command(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/fixture.rs")
+⏺ Command(/bin/zsh -lc 'git diff -- src/bootstrap/llm_policy_fixture/fixture.rs')
+⏺ `src/bootstrap/llm_policy_fixture/fixture.rs` is formatted now.
 
-I used `rustfmt`, so the change is limited to spacing and brace placement:
+I ran `rustfmt` on the file, which normalized the struct/function layout:
 
-```rust
-struct Config {
-    verbose: bool,
-}
+- added standard spacing and indentation
+- expanded the inline definitions into conventional multi-line Rust formatting
 
-fn verbose(config: &Config) -> bool {
-    config.verbose
-}
-```
-
-I didn’t run a separate test because this was a pure formatting pass on an isolated fixture file.
+I didn’t run tests because this was a formatting-only change.

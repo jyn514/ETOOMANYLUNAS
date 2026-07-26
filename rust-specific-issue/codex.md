@@ -1,18 +1,20 @@
 ❯ jyn is reviewing this. Fix https://github.com/rust-lang/rust/issues/156621
 
-⏺ I’m checking the issue details and the relevant compiler area first, then I’ll look for the narrowest failing test before touching implementation.
+⏺ I’m checking the issue and the affected code path first so I can classify the change correctly and avoid touching the wrong area.
 ⏺ WebSearch
-⏺ I’ve got the symptom: the semicolon suggestion on a unit-typed `if` block is offering an unhelpful second insertion point. Next I’m locating the diagnostic path and an existing test bucket for this exact error.
-⏺ Bash(/bin/zsh -lc 'rg -n "consider using a semicolon here|if expressions without `else` arms expect their inner expression to be `'"\\(\\)"'`|expected `'"\\(\\)"'`, found" compiler tests src -g '"'"'!target'"'")
-⏺ Bash(/bin/zsh -lc "rg -n \"E0308\" compiler -g '*.rs' -g '*.stderr' -g '*.fixed'")
-⏺ The first search tripped over shell quoting, so I’m rerunning with simpler patterns and then I’ll inspect the exact suggestion code path.
-⏺ Bash(/bin/zsh -lc 'rg -n -F "expected `()`, found" compiler/src compiler/rustc_hir_typeck compiler/rustc_trait_selection tests')
-⏺ Bash(/bin/zsh -lc 'rg -n -F "if expressions without `else` arms expect their inner expression to be `()`" compiler src tests')
-⏺ Bash(/bin/zsh -lc 'rg -n -F "consider using a semicolon here" compiler src tests')
-⏺ I found the relevant suggestion code in `rustc_hir_typeck`; the remaining step is to pin down which of the two semicolon suggestions is being generated so I can narrow the regression test.
-⏺ Bash(/bin/zsh -lc "sed -n '730,835p' compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs")
-⏺ Bash(/bin/zsh -lc "sed -n '1,140p' tests/ui/suggestions/missing-semicolon.stderr")
-⏺ Bash(/bin/zsh -lc 'rg -n "if expressions without|semicolons? here" compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs tests/ui/suggestions tests/ui/typeck tests/ui/parser')
-⏺ This is a banned task under the repo policy because it requires changing user-facing diagnostic output, including the expected `.stderr` snapshot text. I can still help by explaining the likely code path or reviewing a human-authored patch, but I can’t make the change or draft the diagnostic text for you.
+⏺ I’ve confirmed the issue: the compiler offers an unhelpful second semicolon suggestion in `E0308` for `if` blocks without `else`. Next I’m tracing where that diagnostic is assembled and whether there’s already a regression test covering this shape.
+⏺ Command(/bin/zsh -lc 'rg -n "consider using a semicolon here|if expressions without `else` arms expect their inner expression to be `'"\\(\\)"'`|if without else" compiler tests -g '"'"'!target'"'")
+⏺ Command(/bin/zsh -lc "rg -n \"E0308|mismatched types\" compiler/src -g '"'!target'"'")
+⏺ The first search tripped over shell quoting and the repository layout differs from the path I initially guessed. I’m correcting both so I can pin down the exact diagnostic code and the relevant UI test.
+⏺ Command(/bin/zsh -lc "pwd; rg --files | sed -n '1,40p'")
+⏺ Command(/bin/zsh -lc "rg -n 'consider using a semicolon here|if expressions without .* arms expect their inner expression to be "'`'"\\(\\)"'`|if without else'"' compiler tests -g '"'!target'"'")
+⏺ I found the suggestion site in `rustc_hir_typeck`. The symptom looks local to the “missing semicolon” help generation, so I’m reading the surrounding logic and the nearest tests before I touch anything.
+⏺ Command(/bin/zsh -lc "sed -n '1,160p' tests/ui/suggestions/missing-semicolon.rs")
+⏺ Command(/bin/zsh -lc "sed -n '760,840p' compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs")
+⏺ Command(/bin/zsh -lc "sed -n '1,120p' tests/ui/suggestions/missing-semicolon.stderr")
+⏺ I’ve confirmed this is a diagnostics change. The policy here treats diagnostic text and `.stderr` expectations as prohibited text, so I can’t author the regression test or expected output needed to land the fix in this checkout.
+⏺ I can’t complete this fix in this checkout because it requires changing compiler diagnostics and adding a regression test with expected error output, and the local policy marks diagnostic messages and `.stderr` expectations as prohibited text.
 
-The route required by the policy is to have a human author the diagnostic wording and snapshot updates themselves, then I can review or help narrow the implementation if you want.
+The issue is in `rustc_hir_typeck` around the semicolon suggestion path, specifically [`compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs`](sandbox:/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-ahcARI/checkout/compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs). The problematic branch is the `if`-without-`else` special case that emits an extra semicolon suggestion when the surrounding `if` expression is already the source of the type mismatch.
+
+Because this is a diagnostics task, the route required by the policy is to have a human author the diagnostic wording and test expectations, or to take it up in `#llm-mentoring` if you want guidance on how to proceed within the Rust project’s LLM rules.

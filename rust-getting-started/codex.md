@@ -1,13 +1,11 @@
 ❯ I want to maek a PR to rust-lang/rust. What should I do first?
 
-⏺ First, pick the exact change you want to make, then check the repo rules that apply to it.
+⏺ First: read [`CONTRIBUTING.md`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-pfO4Ls/checkout/CONTRIBUTING.md) and identify which part of the tree your change touches.
 
-For `rust-lang/rust`, the practical first steps are:
+Then, in order:
+1. Confirm the change belongs in this repo, not an external one like Cargo, rustfmt, Clippy, or rust-analyzer.
+2. Find the relevant area’s workflow and tests in the rustc/dev-guide or std-dev-guide.
+3. If you want me to make edits here, name the reviewer who will review the PR first. For rust repo work, I can’t start LLM-generated changes without a named reviewer.
+4. Pick or create a failing test before changing implementation.
 
-1. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) and the relevant rustc-dev-guide section for the area you want to touch.
-2. Identify the subsystem your change affects and confirm it is owned by this repo, not an external subtree or submodule.
-3. Find a named reviewer who has already agreed in advance to review the LLM-created PR. Without that, I should not help you implement code changes here.
-4. Before changing implementation code, add or find a failing test that demonstrates the problem.
-5. Run that test and confirm it fails before editing implementation.
-
-If you want, I can help you pick the right subsystem and test area first.
+If you want, I can help you classify your intended change and point you to the exact docs/tests to read first.
