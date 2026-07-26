@@ -14,9 +14,10 @@ Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` only if you want to restore inherited SSH 
 The runner snapshots the Rust checkout's current repository-local agent instructions (`CLAUDE.md`,
 `AGENTS.md`, `.claude`, `.codex`, and `.agents`), including uncommitted and non-ignored untracked
 files. It then creates a disposable shared Git clone for each scenario/provider run. Other checkout
-changes are not included. Each run has independent writable Git metadata and initializes the Cargo
-and backtrace submodules inside its clone, so Rust's `x` commands and local commits cannot mutate the
-supplied checkout. This keeps parallel runs independent.
+changes are not included. On APFS, the runner prepares one clone and its Cargo and backtrace
+submodules, then uses copy-on-write clones of that template for each run. Other filesystems fall back
+to separate shared Git clones. Each run has independent writable Git metadata, so Rust's `x` commands
+and local commits cannot mutate the supplied checkout. This keeps parallel runs independent.
 Codex runs receive isolated command rules that allow `git add` and `git commit` to write the
 disposable clone's protected Git metadata. No rule permits pushing.
 Bootstrap downloads are shared across those clones through `bootstrap-cache-path`. The cache defaults

@@ -390,6 +390,46 @@ async function snapshotInputRevision(args, env) {
   }
 }
 
+async function prepareCheckoutTemplate(args, env) {
+  if (args.dryRun || process.platform !== "darwin") return null;
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), "transcript-template-"));
+  const checkout = path.join(tempDir, "checkout");
+  try {
+    await runCheckedCommand(
+      { command: "git", args: ["clone", "--shared", "--no-checkout", args.rustRepo, checkout] },
+      args.rustRepo,
+      env,
+      "checkout template clone",
+    );
+    await runCheckedCommand(
+      { command: "git", args: ["-C", checkout, "checkout", "--detach", args.inputRevision] },
+      checkout,
+      env,
+      "checkout template setup",
+    );
+    await runCheckedCommand(
+      {
+        command: "git",
+        args: ["submodule", "update", "--init", "--depth", "1", "--", "library/backtrace", "src/tools/cargo"],
+      },
+      checkout,
+      env,
+      "checkout template submodule setup",
+    );
+  } catch (error) {
+    await rm(tempDir, { recursive: true, force: true });
+    throw error;
+  }
+
+  return {
+    checkout,
+    cleanup: async () => {
+      await rm(tempDir, { recursive: true, force: true });
+    },
+  };
+}
+
 async function prepareRunCheckout(run, args, env, dryRunCommands) {
   const placeholder = "$RUN_WORKTREE";
   const cloneCommand = {
@@ -439,14 +479,27 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
   };
 
   try {
-    await runCheckedCommand(actualCloneCommand, args.rustRepo, env, `${run.name} (${run.provider}) clone setup`);
-    await runCheckedCommand(actualCheckoutCommand, worktree, env, `${run.name} (${run.provider}) checkout setup`);
-    await runCheckedCommand(
-      { command: "git", args: submoduleArgs },
-      worktree,
-      env,
-      `${run.name} (${run.provider}) baseline submodule setup`,
-    );
+    let copiedTemplate = false;
+    if (args.checkoutTemplate) {
+      const copyResult = await runCommand(
+        { command: "cp", args: ["-cR", args.checkoutTemplate, worktree] },
+        tempDir,
+        false,
+        env,
+      );
+      copiedTemplate = copyResult.status === 0;
+      if (!copiedTemplate) await rm(worktree, { recursive: true, force: true });
+    }
+    if (!copiedTemplate) {
+      await runCheckedCommand(actualCloneCommand, args.rustRepo, env, `${run.name} (${run.provider}) clone setup`);
+      await runCheckedCommand(actualCheckoutCommand, worktree, env, `${run.name} (${run.provider}) checkout setup`);
+      await runCheckedCommand(
+        { command: "git", args: submoduleArgs },
+        worktree,
+        env,
+        `${run.name} (${run.provider}) baseline submodule setup`,
+      );
+    }
     await writeFile(
       bootstrapConfig,
       `change-id = "ignore"\n\n[build]\nbootstrap-cache-path = ${JSON.stringify(run.bootstrapCachePath)}\nsubmodules = false\n`,
@@ -757,6 +810,9 @@ async function runAll(runs, args) {
 
 async function main() {
   const args = parseArgs(process.argv);
+  const scenarios = await discoverScenarios(args);
+  if (scenarios.length === 0) throw new Error("No matching scenarios");
+
   const cacheRoot = process.env.XDG_CACHE_HOME ?? path.join(homedir(), ".cache");
   args.bootstrapCachePath = path.resolve(
     process.env.TRANSCRIPTS_BOOTSTRAP_CACHE ?? path.join(cacheRoot, "definitely-not-rust", "bootstrap"),
@@ -775,14 +831,17 @@ async function main() {
     if (gitCheck.status !== 0) throw new Error(`--rust-repo is not a Git repository: ${args.rustRepo}`);
     args.inputRevision = await snapshotInputRevision(args, agentEnvironment());
   }
-  const scenarios = await discoverScenarios(args);
 
-  if (scenarios.length === 0) throw new Error("No matching scenarios");
-
-  const runs = scenarios.flatMap((scenario) =>
-    args.providers.map((provider) => ({ ...scenario, provider, bootstrapCachePath: args.bootstrapCachePath })),
-  );
-  await runAll(runs, args);
+  const template = await prepareCheckoutTemplate(args, agentEnvironment());
+  args.checkoutTemplate = template?.checkout ?? null;
+  try {
+    const runs = scenarios.flatMap((scenario) =>
+      args.providers.map((provider) => ({ ...scenario, provider, bootstrapCachePath: args.bootstrapCachePath })),
+    );
+    await runAll(runs, args);
+  } finally {
+    await template?.cleanup();
+  }
 }
 
 main().catch((error) => {
