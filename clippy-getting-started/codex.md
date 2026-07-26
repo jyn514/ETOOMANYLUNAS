@@ -1,20 +1,17 @@
 ❯ i want to fix a bug in clippy itself. what should i do first?
 
-⏺ What have you already tried, and where have you looked?
+⏺ First, confirm the bug is actually in Clippy and not in rustc or the test setup.
 
-First step is to narrow the bug to a single lint or tool path, then find its implementation and tests. For Clippy that usually means:
-- `src/tools/clippy/clippy_lints/src/`
-- `src/tools/clippy/tests/`
-- the Clippy book / lint docs
-- Zulip `#clippy` if you need design context
+Then do this, in order:
 
-If this is a Clippy-tool bug rather than a rustc bug, the right repo is usually Clippy’s own repository, not `rust-lang/rust`. If you already have an error message, test name, or file path, paste it and I’ll point you at the next place to inspect.
-⏺ What have you already tried, and where have you looked?
+1. Reproduce it with the smallest possible input.
+2. Find the exact lint or pass involved.
+3. Write a test that fails first.
+4. Only then change the implementation.
+5. Re-run the same test and a focused Clippy test subset.
 
-First step is to narrow the bug to a single lint or tool path, then find its implementation and tests. For Clippy that usually means:
-- `src/tools/clippy/clippy_lints/src/`
-- `src/tools/clippy/tests/`
-- the Clippy book or lint docs
-- Zulip `#clippy` if you need design context
+Because this is a Rust repo, there are two important gates before any code edit:
+- I need a named reviewer from the Rust project before I can make repository changes.
+- If the bug lives under `src/tools/clippy`, that code is owned by the Clippy project, so we should verify ownership before editing here.
 
-If this is a Clippy-tool bug rather than a rustc bug, the right repo is usually Clippy’s own repository, not `rust-lang/rust`. If you already have an error message, test name, or file path, paste it and I’ll point you at the next place to inspect.
+If you want, I can help you narrow the bug down to the specific lint and test file first.

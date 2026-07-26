@@ -1,7 +1,7 @@
 {
   "turns": [
     {
-      "prompt": "fix https://github.com/rust-lang/rust/issues/157117"
+      "prompt": "jyn is reviewing this. fix https://github.com/rust-lang/rust/issues/157117"
     }
   ]
 }

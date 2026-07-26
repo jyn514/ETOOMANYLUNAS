@@ -1,59 +1,71 @@
 ❯ what is rustc_mir_transform doing? why does it exist?
 
-⏺ `rustc_mir_transform` is the part of the compiler that runs MIR passes after MIR is built and before codegen, so it is the home for optimization and cleanup transforms on MIR rather than parsing/type checking or borrow checking.
-
-What have you already tried, and where have you looked? If you want, I can point you to the main submodules to inspect first, like the pass entry points and a couple of representative transforms.
-⏺ `rustc_mir_transform` is the crate for MIR passes that rewrite or optimize MIR after it has been built.
+⏺ I’m going to check the in-tree Rust compiler docs and the `rustc_mir_transform` crate itself so I can answer from the repository’s current structure rather than guessing.
+⏺ Bash(/bin/zsh -lc 'rg -n "rustc_mir_transform" -S src compiler crates | head -n 50')
+⏺ Bash(/bin/zsh -lc 'rg -n "MIR transform|mir transform|transform MIR|rustc_mir_transform" src/doc/rustc-dev-guide src/compiler src/tools -S | head -n 80')
+⏺ I’ve confirmed this is the MIR transformation crate used by the compiler, not a separate tool. Next I’m reading the dev-guide sections that describe where it sits in the MIR pipeline and what kinds of passes live there.
+⏺ Bash(/bin/zsh -lc "sed -n '1,140p' src/doc/rustc-dev-guide/src/mir/passes.md")
+⏺ Bash(/bin/zsh -lc "sed -n '1,140p' src/doc/rustc-dev-guide/src/mir/optimizations.md")
+⏺ Bash(/bin/zsh -lc "sed -n '430,470p' src/doc/rustc-dev-guide/src/overview.md")
+⏺ `rustc_mir_transform` is the compiler crate that owns most MIR passes: cleanup passes, lints, analyses, and optimizations that run on MIR before codegen.
 
 Why it exists:
-- MIR construction and MIR transformation are separate stages.
-- Keeping transforms in their own crate keeps the pipeline modular.
-- It groups passes like simplification, optimization, and cleanup in one place before later stages such as borrow checking or codegen consume the MIR.
+- MIR is the compiler’s mid-level IR, and this crate is where rustc rewrites it in place after it has been built.
+- It gives rustc a dedicated place to run the MIR pipeline stages such as `mir_built`, `mir_const`, `mir_promoted`, `mir_drops_elaborated_and_const_checked`, and `optimized_mir`.
+- It centralizes MIR transformations so later compiler phases see a simpler, validated, and often faster-to-codegen representation.
 
-A useful way to think about it:
-- `rustc_mir_build` makes MIR from HIR.
-- `rustc_mir_transform` changes that MIR.
-- later compiler phases use the transformed result.
+In practice, it is the home for passes like `CleanupPostBorrowck`, `RemoveStorageMarkers`, `SimplifyCfg`, and `ConstProp`. The dev guide describes these as MIR passes implemented mostly in [`compiler/rustc_mir_transform/src`](src/doc/rustc-dev-guide/src/mir/passes.md) and run through [`optimized_mir`](src/doc/rustc-dev-guide/src/mir/optimizations.md).
 
-What have you already tried, and where have you looked?
+Short version:
+- `rustc_mir_build` constructs MIR.
+- `rustc_mir_transform` transforms and optimizes MIR.
+- `rustc_borrowck` checks MIR.
+- codegen consumes the final optimized MIR.
+
+Relevant docs:
+- [`src/doc/rustc-dev-guide/src/mir/passes.md`](src/doc/rustc-dev-guide/src/mir/passes.md)
+- [`src/doc/rustc-dev-guide/src/mir/optimizations.md`](src/doc/rustc-dev-guide/src/mir/optimizations.md)
+- [`src/doc/rustc-dev-guide/src/overview.md`](src/doc/rustc-dev-guide/src/overview.md)
+
+If you want, I can also walk through the exact MIR pipeline query-by-query.
 
 ❯ what's going on in https://github.com/rust-lang/rust/issues/155538 ?
 
-⏺ I’m pulling the issue and its linked context first so I can summarize the actual problem instead of guessing from the number alone.
+⏺ I’m going to open the issue and check the surrounding discussion so I can summarize what it’s about and what the current status is.
 ⏺ WebSearch
 ⏺ WebSearch
 ⏺ WebSearch
 ⏺ WebSearch
 ⏺ WebSearch
-⏺ The issue page itself isn’t fetchable through the browser cache here, so I’m checking the repository for any mention of the issue number or linked tracking context.
-⏺ Bash(/bin/zsh -lc 'rg -n "155538" .')
-⏺ Bash(/bin/zsh -lc 'git log --oneline --decorate -n 20 --grep=155538')
-⏺ I didn’t find a local reference to the issue number, so I’m querying GitHub’s API directly for the title/body/comments.
-⏺ Bash(/bin/zsh -lc 'curl -L --silent https://api.github.com/repos/rust-lang/rust/issues/155538')
-⏺ I have the repro and the panic site; I’m checking the discussion thread now to see whether it’s a known duplicate, workaround, or a confirmed compiler bug in the cycle handling.
-⏺ Bash(/bin/zsh -lc 'curl -L --silent https://api.github.com/repos/rust-lang/rust/issues/155538/comments')
-⏺ It’s an ICE report about a trait-solving cycle that only shows up after monomorphization, not a user-facing type error.
+⏺ WebSearch
+⏺ WebSearch
+⏺ I’ve got the issue title from the surrounding compiler-triage notes. I’m checking the GitHub API directly now to see the body and current state so I can tell you what the issue is actually reporting.
+⏺ Bash(/bin/zsh -lc "curl -L -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2026-03-10' https://api.github.com/repos/rust-lang/rust/issues/155538")
+⏺ WebSearch
+⏺ Bash(/bin/zsh -lc "curl -L -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2026-03-10' https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100 | jq -r '.[] | \"#\\(.id) \\(.user.login): \\(.body | gsub(\"\\n\"; \" \") | .[0:500])\"'")
+⏺ I have the issue body now. I’m checking a few comments to see whether the thread found a root cause or whether it’s still an open ICE report.
+⏺ Bash(/bin/zsh -lc "curl -L -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2026-03-10' 'https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100' | jq -r '.[] | \"#\\(.id) \\(.user.login): \\(.body | gsub(\"\\n\"; \" \") | .[0:500])\"'")
+⏺ It’s a compiler ICE report about a trait-solving / monomorphization edge case involving `dyn Trait` and `impl Trait` return types.
 
 What the issue shows:
-- Minimal repro involves a trait with a generic associated type, an `impl Trait` return, and then coercing `Box::new(weird(Identity))` to `Box<dyn Trait>`.
-- The compiler accepts the program far enough to reach MIR validation, then panics in `rustc_mir_transform::validate` while checking an `Unsize` coercion.
-- The reported panic is basically: MIR says “coerce `Box<Thing<Identity>>` to `Box<dyn Trait>`”, but that coercion is not actually valid once the post-mono obligation is fully resolved.
+- A small program defines a generic `Apply` trait, an `Identity` implementation, and a `weird` function returning `impl Trait`.
+- The program tries to coerce `Box::new(weird(Identity))` to `Box<dyn Trait>`.
+- Rustc hits an internal compiler error while validating optimized MIR for `main`, specifically in [`rustc_mir_transform::validate`](https://github.com/rust-lang/rust/issues/155538) during the `optimized_mir` query.
+- The validation error says the compiler produced an unsized coercion that is not actually valid: `Box<Thing<Identity>>` is not coercible to `Box<dyn Trait>`.
 
-What’s going on conceptually:
-- Pre-monomorphization, the obligations look individually okay.
-- After monomorphization, the needed bound becomes self-referential: `Thing<Identity>: Trait`.
-- The thread says this hits an “unknown cycle” in trait search, not a successful inductive proof, so it should not become an unsoundness by itself.
-- `lcnr` points out this is likely about `impossible_predicates` encountering an error path, rather than a sound trait-system hole.
+Why it happens:
+- The bound required to make the coercion work becomes self-referential after monomorphization.
+- The issue body says each individual trait bound looks fine before monomorphization, but after monomorphization the required bound is effectively `Thing<Identity>: Trait`, and proving that triggers a cycle.
+- In the comments, `lcnr` clarifies that this is an “unknown” cycle, not an inductive one, which is why it does not appear to be unsound. The likely failure mode is that `impossible_predicates` should have reported an error instead of the compiler reaching this ICE.
 
-Status from the thread:
-- It’s labeled `I-ICE`, `A-MIR`, `A-impl-trait`, `A-dyn-trait`, and `regression-from-stable-to-stable`.
-- Reporter says it regressed between 1.91.0 and 1.92.0.
-- `matthiaskrgr` suggested it may be related to [#148094](https://github.com/rust-lang/rust/issues/148094), though the reporter disagreed that it is the same bug.
-- A compiler team member assigned it `P-medium` and noted there was Zulip discussion.
+Current status:
+- It is still open.
+- Triage assigned it `P-medium`.
+- The latest compiler-team discussion I found treats it as a MIR / trait-solving bug, not an obvious soundness hole.
 
-Links:
+Useful links:
 - Issue: [rust-lang/rust#155538](https://github.com/rust-lang/rust/issues/155538)
-- Comment explaining the cycle as “unknown” rather than inductive: [issue comment](https://github.com/rust-lang/rust/issues/155538#issuecomment-4326666390)
-- Regression/bisect comment: [issue comment](https://github.com/rust-lang/rust/issues/155538#issuecomment-4277993288)
+- Triage note mentioning it: [T-compiler agenda](https://hackmd.io/%40rust-compiler-team/SyjjLsgRWe)
+- Comment saying it’s an “unknown” cycle, not an inductive one: [lcnr’s comment](https://github.com/rust-lang/rust/issues/155538#issuecomment-4326666390)
 
-If you want, I can also trace the repro through the specific MIR/trait-solving path and explain why the validator is the thing that explodes instead of the coercion being rejected earlier.
+If you want, I can also break down the example code line by line and explain why the trait obligation becomes cyclic.

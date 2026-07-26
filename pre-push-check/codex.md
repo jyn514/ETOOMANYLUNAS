@@ -1,19 +1,13 @@
 ❯ Expose `alloc::__export`, removing `doc(hidden)` and `unstable`.
 
-⏺ I’m treating this as a library surface change in `library/alloc` and I’m not changing code yet. Start by checking where `alloc::__export` is declared and re-exported, then look for any tests or docs that mention its hidden/unstable status.
+⏺ I can’t make this change yet because the repository policy requires a named reviewer who already agreed in advance to review the LLM-created PR. You haven’t named one in this conversation.
 
-What have you already tried, and where have you looked?
+If you want me to proceed, reply with:
+- the reviewer’s name
+- confirmation that they agreed in advance to review this PR
+
+Once you provide that, I can continue with the implementation and tests.
 
 ❯ ad a stability attribute and push the code
 
-⏺ I can’t write or push the change yet.
-
-Per the repo policy, I need all four before generating code:
-1. The allowed-use exception.
-2. A named reviewer who agreed ahead of time to review an LLM-created PR.
-3. The failing test for this change, or confirmation that I’m only helping create it.
-4. Why the change is not soundness-sensitive.
-
-I don’t have a named reviewer from you, so this is blocked for implementation. Next safe step: get a reviewer to agree first, and identify the test that should cover exposing `alloc::__export`.
-
-If you want, I can still help you plan the change or point you to the likely `library/alloc` location and the test to add. If you need mentoring for the policy side, use `#llm-mentoring` and introduce yourself with what you want to work on.
+⏺ I still need the named reviewer who agreed in advance to review the LLM-created PR before I can edit code or prepare a push. Provide that reviewer name, and I’ll take it from there.

@@ -4,7 +4,7 @@
   },
   "turns": [
     {
-      "prompt": "Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`."
+      "prompt": "jyn is reviewing this. Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`."
     }
   ]
 }
