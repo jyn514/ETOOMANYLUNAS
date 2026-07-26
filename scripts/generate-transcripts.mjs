@@ -18,7 +18,7 @@ const PROVIDER_MODELS = {
 
 function usage() {
   console.error(`Usage:
-  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run] [--progress|--no-progress]
+  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--reviewer name] [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run] [--progress|--no-progress]
 
 Scenarios are discovered from */scenario.json.
 Repeat --provider to run multiple providers. If omitted, both claude and codex run.
@@ -40,11 +40,16 @@ function parseArgs(argv) {
     jobs: 1,
     dryRun: false,
     progress: true,
+    reviewer: null,
   };
 
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--rust-repo") args.rustRepo = argv[++i];
+    else if (arg === "--reviewer") {
+      if (args.reviewer !== null) throw new Error("--reviewer may only be provided once");
+      args.reviewer = argv[++i];
+    }
     else if (arg === "--provider") args.providers.push(argv[++i]);
     else if (arg === "--only") args.only.add(argv[++i]);
     else if (arg === "--skip") args.skips.add(argv[++i]);
@@ -61,6 +66,9 @@ function parseArgs(argv) {
   }
 
   if (!args.rustRepo) throw new Error("--rust-repo is required");
+  if (args.reviewer !== null && (!args.reviewer?.trim() || args.reviewer.includes("{{reviewer}}"))) {
+    throw new Error("--reviewer must be a non-empty name");
+  }
   for (const name of args.only) {
     if (args.skips.has(name)) throw new Error(`Scenario cannot be both --only and --skip: ${name}`);
   }
@@ -875,6 +883,7 @@ async function runScenario(run, args) {
           provider_version: args.providerVersions[run.provider],
           harness_revision: args.harnessRevision,
           rust_revision: args.inputRevision,
+          ...(args.reviewer === null ? {} : { reviewer: args.reviewer }),
         },
         null,
         2,
@@ -922,6 +931,27 @@ async function discoverScenarios(args) {
   }
 
   return scenarios;
+}
+
+function substituteScenarioReviewers(scenarios, reviewer) {
+  const requiringReviewer = scenarios.filter((scenario) =>
+    scenario.turns?.some((turn) => turn.prompt?.includes("{{reviewer}}")),
+  );
+  if (requiringReviewer.length > 0 && reviewer === null) {
+    throw new Error(
+      `--reviewer is required by scenario${requiringReviewer.length === 1 ? "" : "s"}: ${requiringReviewer
+        .map((scenario) => scenario.name)
+        .join(", ")}`,
+    );
+  }
+
+  return scenarios.map((scenario) => ({
+    ...scenario,
+    turns: scenario.turns?.map((turn) => ({
+      ...turn,
+      prompt: turn.prompt?.replaceAll("{{reviewer}}", reviewer),
+    })),
+  }));
 }
 
 function validateScenarioSetup(name, setup) {
@@ -1007,7 +1037,7 @@ async function runAll(runs, args) {
 
 async function main() {
   const args = parseArgs(process.argv);
-  const scenarios = await discoverScenarios(args);
+  const scenarios = substituteScenarioReviewers(await discoverScenarios(args), args.reviewer);
   if (scenarios.length === 0) throw new Error("No matching scenarios");
   args.harnessRevision = await runProgressStep(
     args.progress && !args.dryRun,

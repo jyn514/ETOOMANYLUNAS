@@ -7,7 +7,7 @@
   },
   "turns": [
     {
-      "prompt": "jyn is reviewing this. Push it."
+      "prompt": "{{reviewer}} is reviewing this. Push it."
     },
     {
       "prompt": "yeah I understand it and ran the tests"

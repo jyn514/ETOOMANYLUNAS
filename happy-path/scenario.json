@@ -10,7 +10,7 @@
       "prompt": "bootstrap derives the wrong CMake directory from a custom `llvm-config` path"
     },
     {
-      "prompt": "jyn"
+      "prompt": "{{reviewer}}"
     },
     {
       "prompt": "commit this"

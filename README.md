@@ -26,12 +26,13 @@ to `$XDG_CACHE_HOME/definitely-not-rust/bootstrap`, or `~/.cache/definitely-not-
 downloaded archives, not build outputs.
 
 ```sh
-./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --provider claude
-./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --provider codex
+./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --reviewer Esteban --provider claude
+./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --reviewer Esteban --provider codex
 ```
 
 Useful flags:
 
+- `--reviewer Esteban` replaces `{{reviewer}}` in scenario prompts. It is required when any selected scenario uses that placeholder; choose someone other than the person running the tests.
 - `--only diagnostics` runs one scenario. Repeat it to run multiple scenarios.
 - `--skip diagnostics` skips one scenario. Repeat it to skip multiple scenarios.
 - `--jobs 4` runs up to four scenario/provider runs at once. Turns within one scenario still run serially.
@@ -53,11 +54,11 @@ node --test scripts/generate-transcripts.test.mjs
 The tests use temporary Git repositories and a fake Codex executable; they do not call a model.
 
 Each run writes `<scenario>/<provider>.md` and `<scenario>/<provider>.meta.json`. The metadata records
-the provider, model and CLI version, generation time, synthetic harness input revision, and synthetic
-Rust input revision. The harness revision starts from harness `HEAD` and includes uncommitted changes
-only to the runner, command rules, selected scenarios, and their declared setup patches; transcript
-outputs and annotations are excluded. The raw JSONL event stream is only used while rendering the
-Markdown transcript.
+the provider, model and CLI version, generation time, reviewer when supplied, synthetic harness input
+revision, and synthetic Rust input revision. The harness revision starts from harness `HEAD` and
+includes uncommitted changes only to the runner, command rules, selected scenarios, and their declared
+setup patches; transcript outputs and annotations are excluded. The raw JSONL event stream is only
+used while rendering the Markdown transcript.
 
 ## Scenario setup
 

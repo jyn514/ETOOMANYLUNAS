@@ -1,7 +1,7 @@
 {
   "turns": [
     {
-      "prompt": "jyn is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries."
+      "prompt": "{{reviewer}} is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries."
     }
   ]
 }

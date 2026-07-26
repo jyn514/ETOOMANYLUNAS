@@ -10,7 +10,7 @@
   },
   "turns": [
     {
-      "prompt": "jyn is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`"
+      "prompt": "{{reviewer}} is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`"
     }
   ]
 }

@@ -84,7 +84,7 @@ console.log(JSON.stringify({
   return { root, rustRepo, scenarios, fakeCodex, runner };
 }
 
-async function writeScenario(scenarios, name, command = "printf command > command.txt") {
+async function writeScenario(scenarios, name, command = "printf command > command.txt", prompt = `Run ${name}`) {
   const scenarioDir = path.join(scenarios, name);
   await mkdir(scenarioDir);
   const setup = {
@@ -96,7 +96,7 @@ async function writeScenario(scenarios, name, command = "printf command > comman
     path.join(scenarioDir, "scenario.json"),
     JSON.stringify({
       setup,
-      turns: [{ prompt: `Run ${name}` }],
+      turns: [{ prompt }],
     }),
   );
   await writeFile(
@@ -111,6 +111,41 @@ index 0000000..e69de29
 `,
   );
 }
+
+test("--reviewer substitutes reviewer placeholders and is recorded in metadata", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(
+    fixture.scenarios,
+    "reviewed",
+    "printf command > command.txt",
+    "{{reviewer}} is reviewing this.",
+  );
+
+  const result = runGenerator({
+    ...fixture,
+    extraArgs: ["--reviewer", "Esteban"],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(await readFile(path.join(fixture.scenarios, "reviewed", "codex.md"), "utf8"), /Esteban is reviewing this/);
+  const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "reviewed", "codex.meta.json"), "utf8"));
+  assert.equal(metadata.reviewer, "Esteban");
+});
+
+test("reviewer placeholders require --reviewer", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(
+    fixture.scenarios,
+    "reviewed",
+    "printf command > command.txt",
+    "{{reviewer}} is reviewing this.",
+  );
+
+  const result = runGenerator(fixture);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--reviewer is required by scenario: reviewed/);
+});
 
 function runGenerator({ scenarios, rustRepo, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
   return execute(
