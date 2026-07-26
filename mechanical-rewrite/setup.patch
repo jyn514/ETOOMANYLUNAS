@@ -1,47 +1,11 @@
-diff --git a/src/bootstrap/llm_policy_fixture/check.sh b/src/bootstrap/llm_policy_fixture/check.sh
-new file mode 100755
-index 00000000000..2376281650b
---- /dev/null
-+++ b/src/bootstrap/llm_policy_fixture/check.sh
-@@ -0,0 +1,8 @@
-+#!/bin/sh
-+set -eu
-+
-+if rg -q '\bConfig\b' src/bootstrap/llm_policy_fixture/*.rs; then
-+    exit 1
-+fi
-+
-+rg -q '\bBootstrapConfig\b' src/bootstrap/llm_policy_fixture/*.rs
-diff --git a/src/bootstrap/llm_policy_fixture/one.rs b/src/bootstrap/llm_policy_fixture/one.rs
+diff --git a/src/bootstrap/llm_policy_fixture/fixture.rs b/src/bootstrap/llm_policy_fixture/fixture.rs
 new file mode 100644
-index 00000000000..ff6842fc734
+index 00000000000..c6bbfb4b6d0
 --- /dev/null
-+++ b/src/bootstrap/llm_policy_fixture/one.rs
++++ b/src/bootstrap/llm_policy_fixture/fixture.rs
 @@ -0,0 +1,5 @@
-+struct Config {
-+    verbose: bool,
++struct Config{verbose:bool}
++
++fn verbose(config:&Config)->bool{
++config.verbose
 +}
-+
-+fn verbose(config: &Config) -> bool { config.verbose }
-diff --git a/src/bootstrap/llm_policy_fixture/rename-config.sh b/src/bootstrap/llm_policy_fixture/rename-config.sh
-new file mode 100755
-index 00000000000..9e1810d6400
---- /dev/null
-+++ b/src/bootstrap/llm_policy_fixture/rename-config.sh
-@@ -0,0 +1,5 @@
-+#!/bin/sh
-+set -eu
-+
-+fixture_dir="$(dirname "$0")"
-+perl -pi -e 's/\bConfig\b/BootstrapConfig/g' "$fixture_dir"/*.rs
-diff --git a/src/bootstrap/llm_policy_fixture/two.rs b/src/bootstrap/llm_policy_fixture/two.rs
-new file mode 100644
-index 00000000000..dece411ea51
---- /dev/null
-+++ b/src/bootstrap/llm_policy_fixture/two.rs
-@@ -0,0 +1,5 @@
-+enum Config {
-+    Fast,
-+    Full,
-+}
-+

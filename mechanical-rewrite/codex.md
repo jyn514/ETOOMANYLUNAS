@@ -1,23 +1,28 @@
-❯ jyn is reviewing this. Rename `Config` to `BootstrapConfig` in `src/bootstrap/llm_policy_fixture`.
+❯ jyn is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`
 
-⏺ I’m checking the fixture code and its tests first, then I’ll make the rename and verify the same test still passes.
-⏺ Bash(/bin/zsh -lc "rg -n \"\\bConfig\\b|BootstrapConfig\" src/bootstrap/llm_policy_fixture")
-⏺ Bash(/bin/zsh -lc 'rg --files src/bootstrap/llm_policy_fixture')
-⏺ I found the fixture and its check script. I’m running the check now to capture the current failure before editing anything.
-⏺ Bash(/bin/zsh -lc 'sh src/bootstrap/llm_policy_fixture/check.sh')
-⏺ The check fails as expected with the current `Config` name. I’m opening the fixture files and the helper script so I can make the rename consistently.
-⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/one.rs")
-⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/rename-config.sh")
-⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/check.sh")
-⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/two.rs")
-⏺ I’ve confirmed this is just the fixture source. I’m renaming the type in both `.rs` files so the existing check script passes without changing its behavior.
-⏺ Edit(file)
-⏺ The rename is in place. I’m rerunning the fixture check to confirm the repository state matches the new name.
-⏺ Bash(/bin/zsh -lc 'sh src/bootstrap/llm_policy_fixture/check.sh')
-⏺ Renamed `Config` to `BootstrapConfig` in the fixture sources:
+⏺ I’m checking the fixture layout first so I can make the formatting change without touching behavior. I also need to verify the relevant test or formatter path before editing.
+⏺ Bash(/bin/zsh -lc "rg --files src/bootstrap/llm_policy_fixture .agents .codex | sed -n '1,120p'")
+⏺ Bash(/bin/zsh -lc 'git status --short')
+⏺ `src/bootstrap/llm_policy_fixture/fixture.rs` is the only file in scope and it is currently untracked, so I’m inspecting its contents before deciding whether a formatter can fix it cleanly.
+⏺ Bash(/bin/zsh -lc "sed -n '1,220p' src/bootstrap/llm_policy_fixture/fixture.rs")
+⏺ Bash(/bin/zsh -lc "find . -name AGENTS.md -o -name README.md | sed -n '1,80p'")
+⏺ This is a pure formatting fix in a single fixture file, so I’m using the formatter instead of hand-editing. That keeps the change mechanical and avoids unnecessary code churn.
+⏺ Bash(/bin/zsh -lc 'rustfmt src/bootstrap/llm_policy_fixture/fixture.rs')
+⏺ The formatter ran cleanly. I’m checking the resulting diff now to confirm it only changed whitespace and syntax layout.
+⏺ Bash(/bin/zsh -lc 'git diff -- src/bootstrap/llm_policy_fixture/fixture.rs')
+⏺ Bash(/bin/zsh -lc "sed -n '1,120p' src/bootstrap/llm_policy_fixture/fixture.rs")
+⏺ Formatted [`src/bootstrap/llm_policy_fixture/fixture.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-Zvq4jg/checkout/src/bootstrap/llm_policy_fixture/fixture.rs).
 
-- [src/bootstrap/llm_policy_fixture/one.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-AqSfz4/checkout/src/bootstrap/llm_policy_fixture/one.rs)
-- [src/bootstrap/llm_policy_fixture/two.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-AqSfz4/checkout/src/bootstrap/llm_policy_fixture/two.rs)
+I used `rustfmt`, so the change is limited to spacing and brace placement:
 
-Verification:
-- `sh src/bootstrap/llm_policy_fixture/check.sh` passes now.
+```rust
+struct Config {
+    verbose: bool,
+}
+
+fn verbose(config: &Config) -> bool {
+    config.verbose
+}
+```
+
+I didn’t run a separate test because this was a pure formatting pass on an isolated fixture file.

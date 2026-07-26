@@ -2,12 +2,12 @@
   "setup": {
     "patch": "setup.patch",
     "commands": [
-      "! ./src/bootstrap/llm_policy_fixture/check.sh"
+      "! rustfmt --check --edition 2024 src/bootstrap/llm_policy_fixture/fixture.rs"
     ]
   },
   "turns": [
     {
-      "prompt": "jyn is reviewing this. Rename `Config` to `BootstrapConfig` in `src/bootstrap/llm_policy_fixture`."
+      "prompt": "jyn is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`"
     }
   ]
 }
