@@ -29,6 +29,14 @@ Read-only explanation and review remain allowed if separately requested, but do
 not proactively continue test planning, patch design, or produce paste-ready
 prohibited text.
 
+### Before any edit
+
+Before any repository edit, including a test-only edit, apply the `Reviewer`,
+`Soundness`, `Prohibited text`, and `External repositories` gates. If
+investigation reveals a new affected subsystem, output category, or owner,
+apply those gates again before the next edit. Do not create or modify a test
+until the requested task has passed these gates.
+
 ### Soundness
 
 Before editing code, identify the affected subsystem and determine whether the
@@ -72,6 +80,8 @@ affected code has no test suite, PAUSE and ask the user whether to design a new
 test suite or abandon the change. Do not write untested code, and do not attempt
 to design a test suite without input from a human. These are the only options:
 never offer or accept untested implementation as an alternative.
+Needing to wire a new test module, harness, or runner counts as designing a new
+test suite; PAUSE before making those wiring changes.
 
 ### Before pushing
 
@@ -97,9 +107,10 @@ for the user to implement from scratch are allowed.
 Follow the rustc-dev-guide's [LLM guidance]. For a mass rename or mechanical
 rewrite otherwise permitted by this policy, look for an existing formatter,
 linter, or syntax-aware rewrite tool. If a suitable tool exists, run it; do not
-reproduce the same rewrite manually with file-editing tools. If none exists,
-explain that direct LLM rewriting is discouraged and ask the user before
-proceeding.
+reproduce the same rewrite manually with file-editing tools. Once found, the
+next mutating action must be running that tool; do not edit the target files
+first. If none exists, explain that direct LLM rewriting is discouraged and ask
+the user before proceeding.
 
 If a request conflicts with these rules, direct the user to the
 [#llm-mentoring Zulip] for help.
@@ -134,9 +145,12 @@ owning repository using
 [`CONTRIBUTING.md`](CONTRIBUTING.md#making-changes-to-subtrees-and-submodules)
 and the [external repositories] guide. Treat requests concerning Cargo, Clippy,
 rustfmt, Miri, rust-analyzer, or another externally maintained tool as ownership
-checks before implementation. If it is maintained externally, editing its source
-in this checkout is a banned task: STOP and follow [Banned tasks], then direct
-the user to the owning repository. Only update its integration pointer here when
+checks before implementation. If the user explicitly says the bug or change is
+in one of these external tools, ownership is already established: do not
+investigate its implementation or ask for a reviewer in this checkout before
+routing the user. If it is maintained externally, editing its source in this
+checkout is a banned task: STOP and follow [Banned tasks], then direct the user
+to the owning repository. Only update its integration pointer here when
 explicitly requested.
 
 [rustc-dev-guide]: src/doc/rustc-dev-guide/
