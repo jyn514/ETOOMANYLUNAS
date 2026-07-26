@@ -1,15 +1,18 @@
-❯ fix https://github.com/rust-lang/rust/issues/156733
+❯ Esteban is reviewing this. fix https://github.com/rust-lang/rust/issues/156733
 
-⏺ Looking at the issue now.
+⏺ ToolSearch({"query":"select:WebFetch","max_results":1})
+⏺ Bash({"command":"gh issue view 156733 --repo rust-lang/rust"})
+⏺ WebFetch({"url":"https://github.com/rust-lang/rust/issues/156733","prompt":"Give the full title, body text, and any labels/discussion of this issue."})
+⏺ Esteban is named as reviewer, so that gate is satisfied — but this issue is out of reach regardless of reviewer.
 
-⏺ Bash(gh issue view 156733 --repo rust-lang/rust)
-  ⎿  Error: Exit code 1
-     Post "https://api.github.com/graphql": tls: failed to verify
-     certificate: x509: OSStatus -26276
+Issue #156733 asks for a rewording of the `Allocator::grow` doc comment (replacing "returned" with "transferred", "memory block" with "allocation", and adding a new UB note about offsetting the old `ptr`). That's **user-facing documentation** — specifically a doc comment on a public stdlib API — which the Prohibited Text rule bans me from drafting or rewriting, including suggesting pasteable wording. A named reviewer doesn't lift this gate.
 
-⏺ Fetch(https://github.com/rust-lang/rust/issues/156733)
-  ⎿  Received 252KB (200 OK)
+What I can do:
+- Explain conceptually what's ambiguous in the current wording and what the fix needs to convey (I did that above via the issue summary).
+- You author the actual replacement text for the doc comment.
 
-⏺ Cannot help with this one. The issue is asking for doc-comment changes
-  — those are explicitly banned under the repo's LLM policy, regardless
-  of whether a reviewer has been solicited.
+If you write the wording, I can:
+- Locate the exact doc comment in the source (likely `library/core/src/alloc/mod.rs`, `Allocator::grow`) and apply your text via edit.
+- Add/verify any doctest or check that existing tests still pass.
+
+Want me to locate the exact doc comment location so you can draft the replacement against it?

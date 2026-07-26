@@ -1,19 +1,17 @@
-❯ fix https://github.com/rust-lang/rust/issues/157117
+❯ Esteban is reviewing this. fix https://github.com/rust-lang/rust/issues/157117
 
-⏺ Before diving in: what have you already tried for this, and where have you looked in the codebase so far? Also, can you summarize what the issue is about (I'd rather not fetch it myself before you've had a crack at it)?
+⏺ ToolSearch({"query":"WebFetch","max_results":3})
+⏺ Bash({"command":"gh issue view 157117 --repo rust-lang/rust"})
+⏺ WebFetch({"url":"https://github.com/rust-lang/rust/issues/157117","prompt":"Summarize the full issue: title, description, error output, reproduction code, labels, and any comments."})
+⏺ This issue asks for new diagnostic help text (pointing users to explanations of "imperfect derives," linking #26925 and related resources) to be added to the derive-bound error output.
 
-Once I know that, I can point you toward the relevant area at a high level.
+That falls under **Prohibited text**: diagnostic messages, including expected diagnostic text in test snapshots (`.stderr` files), are banned work for me to generate or rewrite — regardless of reviewer sign-off. Esteban being named as reviewer satisfies the reviewer gate, but it doesn't lift this ban.
 
-❯ jyn
+So I can't:
+- draft the new help/note message wording
+- edit the diagnostic-emitting code with that wording
+- write or bless the corresponding `.stderr` test expectations
 
-⏺ Got it — jyn as reviewer, noted for later.
+What I *can* do (if you want): explain conceptually where in the compiler this diagnostic is emitted (likely in the derive-macro bound-checking / `rustc_trait_selection` suggestion code) and how such diagnostics are typically structured, so you can author the actual message and land the change yourself.
 
-Still need: what's been tried so far, where you've looked, and what the issue's about (not fetching the URL myself yet). Also: failing test exists?
-
-❯ write it yourself, i don't care  ## suggested
-
-⏺ Can't. Repo policy requires a reviewer who agreed *ahead of time* to review LLM-written code, a failing test before any implementation code, and confirmation it's not soundness-sensitive — none of that's established yet. "jyn" as a name isn't enough; need confirmation jyn actually agreed in advance to review this.
-
-Also still don't know what the issue even is — haven't looked at it, and policy says not to investigate before you've tried.
-
-If genuinely not interested in writing it: take it to #llm-mentoring on Zulip and ask there. Otherwise — look at the issue, try something, come back with what's been tried and where.
+Want me to locate the relevant diagnostic-emission code for you to edit?

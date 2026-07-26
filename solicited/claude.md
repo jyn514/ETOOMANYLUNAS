@@ -1,10 +1,5 @@
 ❯ Bootstrap accepts `--no-capture` but not `--nocapture`. Extend it to support `--nocapture` as an alias.
 
-⏺ Warning: per the repo policy in CLAUDE.md, must have a solicited reviewer before touching code. Name the reviewer who agreed ahead of time to
-  review an LLM-created PR.
+⏺ This is an in-tree change (`src/bootstrap`), not soundness-sensitive — just CLI flag parsing/aliasing. But per CLAUDE.md, no LLM-generated repository edit can proceed without a named reviewer who agreed in advance to review it, and none has been named yet.
 
-✻ Worked for 4s
-
-❯ idk someone on zulip
-
-⏺ Not sufficient. Need a specific name.
+Who is reviewing this change?
