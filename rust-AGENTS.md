@@ -41,6 +41,9 @@ repositories` first, then `Prohibited text`, then `Reviewer`. Apply the
 implementation. If investigation reveals a new output category or owner, apply
 the relevant gate again before the next edit. Do not create or modify a test
 until the requested task has passed the gates that precede test edits.
+For formatting or another mechanical rewrite, do not edit target files
+directly; follow [Mechanical rewrites](#mechanical-rewrites) before the first
+mutation.
 
 ### Soundness
 
@@ -143,6 +146,8 @@ user must author it.
 
 Reading, explaining, summarizing, reviewing, and suggesting possible solutions
 for the user to implement from scratch are allowed.
+
+### Mechanical rewrites
 
 Follow the rustc-dev-guide's [LLM guidance]. For a mass rename or mechanical
 rewrite otherwise permitted by this policy, look for an existing formatter,
