@@ -1,0 +1,11 @@
+prefix_rule(
+    pattern = ["git", "add"],
+    decision = "allow",
+    justification = "The scenario runs in a disposable clone with independent Git metadata.",
+)
+
+prefix_rule(
+    pattern = ["git", "commit"],
+    decision = "allow",
+    justification = "The scenario runs in a disposable clone with independent Git metadata.",
+)

@@ -159,12 +159,18 @@ async function prepareRunEnvironment(provider, dryRun) {
   const codexHome = process.env.CODEX_HOME ?? path.join(homedir(), ".codex");
   const isolatedCodexHome = await mkdtemp(path.join(tmpdir(), "transcript-codex-home-"));
   const isolatedSqliteHome = path.join(isolatedCodexHome, "sqlite");
+  const isolatedRulesDir = path.join(isolatedCodexHome, "rules");
   await symlinkChildrenExcept(
     codexHome,
     isolatedCodexHome,
-    new Set(["AGENTS.md", "AGENTS.override.md", "sqlite"]),
+    new Set(["AGENTS.md", "AGENTS.override.md", "rules", "sqlite"]),
   );
   await mkdir(isolatedSqliteHome);
+  await mkdir(isolatedRulesDir);
+  await writeFile(
+    path.join(isolatedRulesDir, "transcript.rules"),
+    await readFile(new URL("transcript.rules", import.meta.url)),
+  );
 
   return {
     env: agentEnvironment({

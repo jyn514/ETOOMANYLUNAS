@@ -17,6 +17,8 @@ files. It then creates a disposable shared Git clone for each scenario/provider 
 changes are not included. Each run has independent writable Git metadata and initializes the Cargo
 and backtrace submodules inside its clone, so Rust's `x` commands and local commits cannot mutate the
 supplied checkout. This keeps parallel runs independent.
+Codex runs receive isolated command rules that allow `git add` and `git commit` to write the
+disposable clone's protected Git metadata. No rule permits pushing.
 Bootstrap downloads are shared across those clones through `bootstrap-cache-path`. The cache defaults
 to `$XDG_CACHE_HOME/definitely-not-rust/bootstrap`, or `~/.cache/definitely-not-rust/bootstrap` when
 `XDG_CACHE_HOME` is unset. Set `TRANSCRIPTS_BOOTSTRAP_CACHE` to use another location. This reuses
