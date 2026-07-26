@@ -42,7 +42,12 @@ If `claude` or `codex` is not on `PATH`, set `CLAUDE_BIN=/full/path/to/claude` o
 
 The script prints per-run and per-turn progress on stderr, including agent messages and tool events as they arrive. If a child process goes silent for 30 seconds, it emits a heartbeat line that names the stuck run and turn. Use `--no-progress` for quiet operation.
 
-Each run writes `<scenario>/<provider>.md`. The raw JSONL event stream is only used while rendering the Markdown transcript.
+Each run writes `<scenario>/<provider>.md` and `<scenario>/<provider>.meta.json`. The metadata records
+the provider, model and CLI version, generation time, synthetic harness input revision, and synthetic
+Rust input revision. The harness revision starts from harness `HEAD` and includes uncommitted changes
+only to the runner, command rules, selected scenarios, and their declared setup patches; transcript
+outputs and annotations are excluded. The raw JSONL event stream is only used while rendering the
+Markdown transcript.
 
 ## Scenario setup
 

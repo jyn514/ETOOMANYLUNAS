@@ -8,6 +8,11 @@ import process from "node:process";
 import { clearInterval, setInterval } from "node:timers";
 import { randomUUID } from "node:crypto";
 
+const PROVIDER_MODELS = {
+  claude: "claude-sonnet-5",
+  codex: "gpt-5.4-mini",
+};
+
 function usage() {
   console.error(`Usage:
   node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run] [--progress|--no-progress]
@@ -89,7 +94,7 @@ function buildClaudeCommand(run, turn, state) {
     "stream-json",
     "--verbose",
     "--model",
-    "sonnet",
+    PROVIDER_MODELS.claude,
     "--effort",
     "medium",
   ];
@@ -107,7 +112,7 @@ function buildCodexCommand(run, turn, state) {
     "exec",
     "--json",
     "--model",
-    "gpt-5.4-mini",
+    PROVIDER_MODELS.codex,
     "--sandbox",
     "workspace-write",
     "--add-dir",
@@ -388,6 +393,102 @@ async function snapshotInputRevision(args, env) {
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+}
+
+async function snapshotHarnessRevision(args, scenarios, env) {
+  if (args.dryRun) return "$HARNESS_REVISION";
+
+  const inputPaths = new Set(["scripts/generate-transcripts.mjs", "scripts/transcript.rules"]);
+  for (const scenario of scenarios) {
+    inputPaths.add(path.join(scenario.name, "scenario.json"));
+    if (scenario.setup?.patch) {
+      const relativePatch = path.relative(process.cwd(), scenario.setup.patch);
+      if (relativePatch.startsWith(`..${path.sep}`) || path.isAbsolute(relativePatch)) {
+        throw new Error(`${scenario.name} setup patch is outside the harness repository: ${scenario.setup.patch}`);
+      }
+      inputPaths.add(relativePatch);
+    }
+  }
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), "transcript-harness-index-"));
+  const indexPath = path.join(tempDir, "index");
+  const snapshotEnv = {
+    ...env,
+    GIT_INDEX_FILE: indexPath,
+    GIT_AUTHOR_NAME: "Transcript Fixture",
+    GIT_AUTHOR_EMAIL: "transcript-fixture@invalid",
+    GIT_COMMITTER_NAME: "Transcript Fixture",
+    GIT_COMMITTER_EMAIL: "transcript-fixture@invalid",
+  };
+
+  try {
+    const head = await runCheckedCommand(
+      { command: "git", args: ["rev-parse", "HEAD"] },
+      process.cwd(),
+      snapshotEnv,
+      "harness snapshot HEAD discovery",
+    );
+    await runCheckedCommand(
+      { command: "git", args: ["read-tree", head.stdout.trim()] },
+      process.cwd(),
+      snapshotEnv,
+      "harness snapshot initialization",
+    );
+    await runCheckedCommand(
+      {
+        command: "git",
+        args: ["add", "--all", "--", ...[...inputPaths].sort().map((inputPath) => `:(top,literal)${inputPath}`)],
+      },
+      process.cwd(),
+      snapshotEnv,
+      "harness snapshot staging",
+    );
+    const tree = await runCheckedCommand(
+      { command: "git", args: ["write-tree"] },
+      process.cwd(),
+      snapshotEnv,
+      "harness snapshot tree creation",
+    );
+    const commit = await runCheckedCommand(
+      {
+        command: "git",
+        args: [
+          "commit-tree",
+          tree.stdout.trim(),
+          "-p",
+          head.stdout.trim(),
+          "-m",
+          "transcript harness input snapshot",
+        ],
+      },
+      process.cwd(),
+      snapshotEnv,
+      "harness snapshot commit creation",
+    );
+    return commit.stdout.trim();
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function collectProviderVersions(args, env) {
+  const versions = {};
+  for (const provider of args.providers) {
+    if (args.dryRun) {
+      versions[provider] = "$PROVIDER_VERSION";
+      continue;
+    }
+    const command =
+      provider === "claude"
+        ? process.env.CLAUDE_BIN ?? "claude"
+        : process.env.CODEX_BIN ?? "codex";
+    const result = await runCommand({ command, args: ["--version"] }, process.cwd(), false, env);
+    if (result.status !== 0) {
+      throw new Error(`Failed to determine ${provider} version with ${shellQuote(command)} --version`);
+    }
+    versions[provider] = (result.stdout.trim() || result.stderr.trim()).split("\n")[0];
+  }
+  return versions;
 }
 
 async function prepareCheckoutTemplate(args, env) {
@@ -706,7 +807,25 @@ async function runScenario(run, args) {
 
   const outDir = path.resolve(run.name);
   await mkdir(outDir, { recursive: true });
-  await writeFile(path.join(outDir, `${run.provider}.md`), `${transcript.join("\n").trim()}\n`);
+  await Promise.all([
+    writeFile(path.join(outDir, `${run.provider}.md`), `${transcript.join("\n").trim()}\n`),
+    writeFile(
+      path.join(outDir, `${run.provider}.meta.json`),
+      `${JSON.stringify(
+        {
+          version: 1,
+          generated_at: new Date().toISOString(),
+          provider: run.provider,
+          model: PROVIDER_MODELS[run.provider],
+          provider_version: args.providerVersions[run.provider],
+          harness_revision: args.harnessRevision,
+          rust_revision: args.inputRevision,
+        },
+        null,
+        2,
+      )}\n`,
+    ),
+  ]);
 }
 
 async function discoverScenarios(args) {
@@ -835,6 +954,8 @@ async function main() {
   const args = parseArgs(process.argv);
   const scenarios = await discoverScenarios(args);
   if (scenarios.length === 0) throw new Error("No matching scenarios");
+  args.harnessRevision = await snapshotHarnessRevision(args, scenarios, agentEnvironment());
+  args.providerVersions = await collectProviderVersions(args, agentEnvironment());
 
   const cacheRoot = process.env.XDG_CACHE_HOME ?? path.join(homedir(), ".cache");
   args.bootstrapCachePath = path.resolve(
