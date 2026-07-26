@@ -39,17 +39,18 @@ until the requested task has passed these gates.
 
 ### Soundness
 
-Before editing code, identify the affected subsystem and determine whether the
-change could make the compiler accept invalid programs, mis-evaluate
-compile-time code, violate memory validity, or generate incorrect executable
-behavior. If it could, or if you cannot confidently rule those outcomes out,
-this is a banned task: STOP and follow [Banned tasks]. Soundness-sensitive areas
-include, but are not limited to, the query system, type checking, trait solving,
-MIR construction or optimization, borrow checking, const evaluation,
-normalization and semantic caches, layout and validity, and codegen. Explain the
-concern and direct the user to [#llm-mentoring Zulip].
-For example, a localized crash fix in borrow checking or type layout is still
-soundness-sensitive: STOP before adding a regression test.
+Classify soundness risk by the behavior the changed code can affect, not by the
+reported symptom, intended fix, or apparent size of the patch. An ICE, crash,
+rejection of valid code, or localized plumbing bug may still be
+soundness-sensitive if the changed code affects compiler semantics, compile-time
+evaluation, memory validity or layout, or generated code. If so, or if uncertain,
+this is a banned task: STOP before adding a regression test and follow
+[Banned tasks].
+
+Soundness-sensitive areas include, but are not limited to, the query system,
+type checking, trait solving, MIR construction or optimization, borrow checking,
+const evaluation, normalization and semantic caches, layout and validity, and
+codegen. Explain the concern and direct the user to [#llm-mentoring Zulip].
 
 ### Prohibited text
 
