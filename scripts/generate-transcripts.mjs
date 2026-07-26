@@ -383,37 +383,64 @@ async function snapshotInputRevision(args, env) {
   }
 }
 
-async function prepareRunWorktree(run, args, env, dryRunCommands) {
+async function prepareRunCheckout(run, args, env, dryRunCommands) {
   const placeholder = "$RUN_WORKTREE";
-  const addCommand = {
+  const cloneCommand = {
     command: "git",
-    args: ["-C", args.rustRepo, "worktree", "add", "--detach", placeholder, args.inputRevision],
+    args: ["clone", "--shared", "--no-checkout", args.rustRepo, placeholder],
+  };
+  const checkoutCommand = {
+    command: "git",
+    args: ["-C", placeholder, "checkout", "--detach", args.inputRevision],
+  };
+  const submoduleArgs = [
+    "submodule",
+    "update",
+    "--init",
+    "--depth",
+    "1",
+    "--",
+    "library/backtrace",
+    "src/tools/cargo",
+  ];
+  const submoduleCommand = {
+    command: "git",
+    args: ["-C", placeholder, ...submoduleArgs],
   };
 
   if (args.dryRun) {
-    dryRunCommands.push(commandText(addCommand));
+    dryRunCommands.push(commandText(cloneCommand), commandText(checkoutCommand), commandText(submoduleCommand));
     return {
       cwd: placeholder,
+      env,
       cleanup: async () => {
-        dryRunCommands.push(
-          commandText({
-            command: "git",
-            args: ["-C", args.rustRepo, "worktree", "remove", "--force", placeholder],
-          }),
-        );
+        dryRunCommands.push(`rm -rf ${shellQuote(placeholder)}`);
       },
     };
   }
 
   const tempDir = await mkdtemp(path.join(tmpdir(), "transcript-worktree-"));
   const worktree = path.join(tempDir, "checkout");
-  const actualAddCommand = {
-    ...addCommand,
-    args: ["-C", args.rustRepo, "worktree", "add", "--detach", worktree, args.inputRevision],
+  const bootstrapConfig = path.join(tempDir, "bootstrap.toml");
+  const actualCloneCommand = {
+    ...cloneCommand,
+    args: ["clone", "--shared", "--no-checkout", args.rustRepo, worktree],
+  };
+  const actualCheckoutCommand = {
+    ...checkoutCommand,
+    args: ["-C", worktree, "checkout", "--detach", args.inputRevision],
   };
 
   try {
-    await runCheckedCommand(actualAddCommand, args.rustRepo, env, `${run.name} (${run.provider}) worktree setup`);
+    await runCheckedCommand(actualCloneCommand, args.rustRepo, env, `${run.name} (${run.provider}) clone setup`);
+    await runCheckedCommand(actualCheckoutCommand, worktree, env, `${run.name} (${run.provider}) checkout setup`);
+    await runCheckedCommand(
+      { command: "git", args: submoduleArgs },
+      worktree,
+      env,
+      `${run.name} (${run.provider}) baseline submodule setup`,
+    );
+    await writeFile(bootstrapConfig, 'change-id = "ignore"\n\n[build]\nsubmodules = false\n');
   } catch (error) {
     await rm(tempDir, { recursive: true, force: true });
     throw error;
@@ -421,24 +448,12 @@ async function prepareRunWorktree(run, args, env, dryRunCommands) {
 
   return {
     cwd: worktree,
+    env: {
+      ...env,
+      RUST_BOOTSTRAP_CONFIG: bootstrapConfig,
+    },
     cleanup: async () => {
-      const removeResult = await runCommand(
-        {
-          command: "git",
-          args: ["-C", args.rustRepo, "worktree", "remove", "--force", worktree],
-        },
-        args.rustRepo,
-        false,
-        env,
-      );
       await rm(tempDir, { recursive: true, force: true });
-      if (removeResult.status !== 0) {
-        throw new Error(
-          `${run.name} (${run.provider}) worktree cleanup failed with status ${removeResult.status}${
-            removeResult.stderr.trim() ? `\n${removeResult.stderr.trim()}` : ""
-          }`,
-        );
-      }
     },
   };
 }
@@ -542,11 +557,11 @@ async function runScenario(run, args) {
     codexAgentMessageTexts: new Set(),
   };
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
-  let runWorktree = null;
+  let runCheckout = null;
 
   try {
-    runWorktree = await prepareRunWorktree(run, args, runEnvironment.env, dryRunCommands);
-    await applyScenarioSetup(run, runWorktree.cwd, args, runEnvironment.env, dryRunCommands);
+    runCheckout = await prepareRunCheckout(run, args, runEnvironment.env, dryRunCommands);
+    await applyScenarioSetup(run, runCheckout.cwd, args, runCheckout.env, dryRunCommands);
 
     for (const [turnIndex, turn] of run.turns.entries()) {
       const progressLabel = `${run.name} (${run.provider}) turn ${turnIndex + 1}/${run.turns.length}`;
@@ -580,9 +595,9 @@ async function runScenario(run, args) {
       };
       const result = await runCommand(
         command,
-        runWorktree.cwd,
+        runCheckout.cwd,
         args.dryRun,
-        runEnvironment.env,
+        runCheckout.env,
         args.progress && !args.dryRun ? progressLabel : null,
         args.dryRun ? null : collectOutputLine,
       );
@@ -606,7 +621,7 @@ async function runScenario(run, args) {
     }
   } finally {
     try {
-      await runWorktree?.cleanup?.();
+      await runCheckout?.cleanup?.();
     } finally {
       await runEnvironment.cleanup?.();
     }

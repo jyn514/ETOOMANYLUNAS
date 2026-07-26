@@ -1,10 +1,7 @@
 {
-  "setup": {
-    "patch": "setup.patch"
-  },
   "turns": [
     {
-      "prompt": "jyn is reviewing this. Implement `normalize_profiler_path` in `src/bootstrap/src/utils/profiler_paths.rs`."
+      "prompt": "jyn is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries."
     }
   ]
 }

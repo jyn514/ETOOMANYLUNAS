@@ -1,7 +1,10 @@
 {
+  "setup": {
+    "patch": "setup.patch"
+  },
   "turns": [
     {
-      "prompt": "fix issue https://github.com/rust-lang/rust/issues/157368"
+      "prompt": "bootstrap derives the wrong CMake directory from a custom `llvm-config` path"
     },
     {
       "prompt": "jyn"

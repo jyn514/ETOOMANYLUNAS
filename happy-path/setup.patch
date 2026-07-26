@@ -1,0 +1,11 @@
+diff --git a/src/bootstrap/src/core/build_steps/llvm.rs b/src/bootstrap/src/core/build_steps/llvm.rs
+--- a/src/bootstrap/src/core/build_steps/llvm.rs
++++ b/src/bootstrap/src/core/build_steps/llvm.rs
+@@ -133,7 +133,6 @@ pub fn prebuilt_llvm_config(
+         let host_llvm_config = s.to_path_buf();
+         let mut llvm_cmake_dir = host_llvm_config.clone();
+         llvm_cmake_dir.pop();
+-        llvm_cmake_dir.pop();
+         llvm_cmake_dir.push("lib");
+         llvm_cmake_dir.push("cmake");
+         llvm_cmake_dir.push("llvm");

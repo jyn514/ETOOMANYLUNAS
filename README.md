@@ -13,9 +13,10 @@ Agent subprocesses run with non-interactive Git/SSH prompts disabled. SSH agent 
 Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` only if you want to restore inherited SSH agent behavior.
 The runner snapshots the Rust checkout's current repository-local agent instructions (`CLAUDE.md`,
 `AGENTS.md`, `.claude`, `.codex`, and `.agents`), including uncommitted and non-ignored untracked
-files. It then creates a disposable Git worktree for each scenario/provider run. Other checkout
-changes and submodule contents are not included. This keeps parallel runs independent and leaves the
-supplied checkout unchanged.
+files. It then creates a disposable shared Git clone for each scenario/provider run. Other checkout
+changes are not included. Each run has independent writable Git metadata and initializes the Cargo
+and backtrace submodules inside its clone, so Rust's `x` commands and local commits cannot mutate the
+supplied checkout. This keeps parallel runs independent.
 
 ```sh
 ./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --provider claude
