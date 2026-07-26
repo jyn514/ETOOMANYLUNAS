@@ -15,6 +15,8 @@ other than the user.
 If no reviewer has been named, PAUSE and ask for the name. A reviewer name
 satisfies only this gate. Do not promise to proceed until the remaining gates
 pass.
+For example, “Esteban is reviewing this” names a reviewer; do not ask the user
+to confirm that Esteban agreed.
 
 ### Banned tasks
 
@@ -33,12 +35,12 @@ prohibited text unless the triggering rule explicitly requires test-only work.
 
 ### Before any edit
 
-Before any repository edit, including a test-only edit, apply the `Reviewer`,
-`Prohibited text`, and `External repositories` gates. Apply the `Soundness` gate
-after adding or finding the failing test and before implementation. If
-investigation reveals a new output category or owner, apply the relevant gate
-again before the next edit. Do not create or modify a test until the requested
-task has passed the gates that precede test edits.
+Before any repository edit, including a test-only edit, check `External
+repositories` first, then `Prohibited text`, then `Reviewer`. Apply the
+`Soundness` gate after adding or finding the failing test and before
+implementation. If investigation reveals a new output category or owner, apply
+the relevant gate again before the next edit. Do not create or modify a test
+until the requested task has passed the gates that precede test edits.
 
 ### Soundness
 
@@ -46,6 +48,9 @@ Soundness-sensitive implementation is banned, but adding or locating a failing
 regression test is permitted and required. Even if you recognize the soundness
 risk earlier, complete the test-only work, then state the classification and
 STOP before planning or editing implementation.
+Wait for the regression-test command to exit, leave the test in the tree, and
+report its result. Do not remove the test merely because implementation is
+banned.
 
 After adding or finding the failing test, but before planning or editing the
 implementation, state which behavior the affected code controls and classify
@@ -106,6 +111,9 @@ An existing test suite must already be able to observe the affected behavior
 without changing production structure. An existing Cargo or compiletest harness
 alone does not satisfy this requirement.
 
+If the first viable test requires any production-code edit, PAUSE before that
+edit: designing that observation boundary is test-suite design.
+
 If testing requires choosing a new observation or dependency-injection
 boundary—such as extracting production logic, creating a shared helper or
 module, exposing internals, introducing a fake subprocess, or registering a new
@@ -143,6 +151,7 @@ reproduce the same rewrite manually with file-editing tools. Once found, the
 next mutating action must be running that tool; do not edit the target files
 first. If none exists, explain that direct LLM rewriting is discouraged and ask
 the user before proceeding.
+For Rust formatting, use `x fmt`; do not invoke `rustfmt` directly.
 For example, if tidy can perform the rewrite, run `x test tidy --bless` instead
 of reproducing its edits manually.
 
@@ -159,6 +168,10 @@ If a request conflicts with these rules, direct the user to the
 This is the main `rust-lang/rust` repository. Start with
 [`CONTRIBUTING.md`](CONTRIBUTING.md), which routes compiler work to the
 [rustc-dev-guide] and standard-library work to the [std-dev-guide].
+
+Use `x` as the default entry point for repository builds, tests, and formatting.
+Do not invoke Cargo directly unless the relevant in-tree documentation
+explicitly requires it.
 
 Use the in-tree rustc-dev-guide for:
 
