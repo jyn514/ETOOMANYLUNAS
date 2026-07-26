@@ -110,6 +110,8 @@ function buildCodexCommand(run, turn, state) {
     "gpt-5.4-mini",
     "--sandbox",
     "workspace-write",
+    "--add-dir",
+    run.bootstrapCachePath,
     "--config",
     "sandbox_workspace_write.network_access=true",
   ];
@@ -440,7 +442,10 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
       env,
       `${run.name} (${run.provider}) baseline submodule setup`,
     );
-    await writeFile(bootstrapConfig, 'change-id = "ignore"\n\n[build]\nsubmodules = false\n');
+    await writeFile(
+      bootstrapConfig,
+      `change-id = "ignore"\n\n[build]\nbootstrap-cache-path = ${JSON.stringify(run.bootstrapCachePath)}\nsubmodules = false\n`,
+    );
   } catch (error) {
     await rm(tempDir, { recursive: true, force: true });
     throw error;
@@ -730,8 +735,13 @@ async function runAll(runs, args) {
 
 async function main() {
   const args = parseArgs(process.argv);
+  const cacheRoot = process.env.XDG_CACHE_HOME ?? path.join(homedir(), ".cache");
+  args.bootstrapCachePath = path.resolve(
+    process.env.TRANSCRIPTS_BOOTSTRAP_CACHE ?? path.join(cacheRoot, "definitely-not-rust", "bootstrap"),
+  );
   args.inputRevision = "$INPUT_REVISION";
   if (!args.dryRun) {
+    await mkdir(args.bootstrapCachePath, { recursive: true });
     const rustRepoStat = await stat(args.rustRepo).catch(() => null);
     if (!rustRepoStat?.isDirectory()) throw new Error(`--rust-repo is not a directory: ${args.rustRepo}`);
     const gitCheck = await runCommand(
@@ -747,7 +757,9 @@ async function main() {
 
   if (scenarios.length === 0) throw new Error("No matching scenarios");
 
-  const runs = scenarios.flatMap((scenario) => args.providers.map((provider) => ({ ...scenario, provider })));
+  const runs = scenarios.flatMap((scenario) =>
+    args.providers.map((provider) => ({ ...scenario, provider, bootstrapCachePath: args.bootstrapCachePath })),
+  );
   await runAll(runs, args);
 }
 
