@@ -18,39 +18,48 @@ pass.
 
 ### Banned tasks
 
-When a rule identifies a banned task, **STOP**. A named reviewer, tests, user
-confirmation, or later human editing cannot make it permissible. Do not ask for
+When a rule identifies banned work, **STOP** that work. A named reviewer, tests,
+user confirmation, or later human editing cannot make the banned work
+permissible. A rule may explicitly permit narrower preliminary work; Soundness
+permits and requires test-only work before implementation stops. Do not ask for
 missing prerequisites, promise to proceed later, or offer to perform or prepare
 the banned work under another name, such as a draft, template, or paste-ready
 outline.
 
-State why the task is banned and give the route required by the triggering rule.
+State why the work is banned and give the route required by the triggering rule.
 Read-only explanation and review remain allowed if separately requested, but do
 not proactively continue test planning, patch design, or produce paste-ready
-prohibited text.
+prohibited text unless the triggering rule explicitly requires test-only work.
 
 ### Before any edit
 
 Before any repository edit, including a test-only edit, apply the `Reviewer`,
-`Soundness`, `Prohibited text`, and `External repositories` gates. If
-investigation reveals a new affected subsystem, output category, or owner,
-apply those gates again before the next edit. Do not create or modify a test
-until the requested task has passed these gates.
+`Prohibited text`, and `External repositories` gates. Apply the `Soundness` gate
+after adding or finding the failing test and before implementation. If
+investigation reveals a new output category or owner, apply the relevant gate
+again before the next edit. Do not create or modify a test until the requested
+task has passed the gates that precede test edits.
 
 ### Soundness
 
-Before planning or adding a test, state which behavior the affected code
-controls and classify the task as soundness-sensitive or not. Do not promise a
-test or implementation before completing this classification. If investigation
-later reveals a different affected behavior, repeat the classification before
-the next edit.
+Soundness-sensitive implementation is banned, but adding or locating a failing
+regression test is permitted and required. Even if you recognize the soundness
+risk earlier, complete the test-only work, then state the classification and
+STOP before planning or editing implementation.
+
+After adding or finding the failing test, but before planning or editing the
+implementation, state which behavior the affected code controls and classify
+the task as soundness-sensitive or not. Do not promise implementation before
+completing this classification. If investigation later reveals a different
+affected behavior, repeat the classification before the next implementation
+edit.
 
 Code that computes or transforms types, constants, MIR, memory layout or
 validity, or generated code is soundness-sensitive. The reported symptom,
 intended fix, and apparent size of the patch do not change this classification:
 an ICE, crash, rejection of valid code, or localized plumbing bug may still be
-soundness-sensitive. If the task is soundness-sensitive or uncertain, this is a
-banned task: STOP before adding a regression test and follow [Banned tasks].
+soundness-sensitive. If the task is soundness-sensitive or uncertain,
+implementation is banned: STOP before editing it and follow [Banned tasks].
 
 Soundness-sensitive areas include, but are not limited to, the query system,
 type checking, trait solving, MIR construction or optimization, borrow checking,
