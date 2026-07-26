@@ -99,10 +99,19 @@ affected code has no test suite, PAUSE and ask the user whether to design a new
 test suite or abandon the change. Do not write untested code, and do not attempt
 to design a test suite without input from a human. These are the only options:
 never offer or accept untested implementation as an alternative.
-Needing to wire a new test module, harness, or runner counts as designing a new
-test suite; PAUSE before making those wiring changes.
-For example, if testing a repository-maintenance checker requires registering a
-new harness, PAUSE before creating that harness.
+
+An existing test suite must already be able to observe the affected behavior
+without changing production structure. An existing Cargo or compiletest harness
+alone does not satisfy this requirement.
+
+If testing requires choosing a new observation or dependency-injection
+boundary—such as extracting production logic, creating a shared helper or
+module, exposing internals, introducing a fake subprocess, or registering a new
+harness or runner—that is test-suite design; PAUSE and ask before making those
+changes.
+
+Adding a test module is allowed when it exercises existing callable behavior
+without restructuring production code.
 
 ### Before pushing
 
