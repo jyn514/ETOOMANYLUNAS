@@ -5,12 +5,29 @@
 Follow the Rust project's [LLM usage policy]. It applies to all LLM-generated
 text even if a human later edits it.
 
-Do not write, edit, or generate code unless the user has named, in this
-conversation, the reviewer who agreed in advance to review the LLM-created PR.
-A general assurance that review was solicited is not enough. The reviewer must
-be someone other than the user.
+### Reviewer
 
-Even with a named reviewer:
+Do not make any LLM-generated repository change unless the user has named, in
+this conversation, the reviewer who agreed in advance to review it. A general
+assurance that review was solicited is not enough. The reviewer must be someone
+other than the user.
+
+If no reviewer has been named, PAUSE and ask for the name. A reviewer name
+satisfies only this gate. Do not promise to proceed until the remaining gates
+pass.
+
+### Banned tasks
+
+When a rule identifies a banned task, **STOP**. A named reviewer, tests, user
+confirmation, or later human editing cannot make it permissible. Do not ask for
+missing prerequisites, promise to proceed later, or offer to perform or prepare
+the banned work under another name, such as a draft, template, or paste-ready
+outline.
+
+State why the task is banned and give the route required by the triggering rule.
+Read-only explanation and review remain allowed if separately requested, but do
+not proactively continue test planning, patch design, or produce paste-ready
+prohibited text.
 
 ### Soundness
 
@@ -18,25 +35,27 @@ Before editing code, identify the affected subsystem and determine whether the
 change could make the compiler accept invalid programs, mis-evaluate
 compile-time code, violate memory validity, or generate incorrect executable
 behavior. If it could, or if you cannot confidently rule those outcomes out,
-STOP the implementation task. Do not continue to test planning, patch design,
-or implementation. Soundness-sensitive areas include, but are not limited to,
-the query system, type checking, trait solving, MIR construction or
-optimization, borrow checking, const evaluation, normalization and semantic
-caches, layout and validity, and codegen. Explain the concern and direct the
-user to [#llm-mentoring Zulip].
+this is a banned task: STOP and follow [Banned tasks]. Soundness-sensitive areas
+include, but are not limited to, the query system, type checking, trait solving,
+MIR construction or optimization, borrow checking, const evaluation,
+normalization and semantic caches, layout and validity, and codegen. Explain the
+concern and direct the user to [#llm-mentoring Zulip].
 
 ### Prohibited text
 
 Never generate or rewrite PR descriptions, issue bodies, public comments,
 user-facing documentation, diagnostic messages, or non-trivial source comments.
-Tell the user which category is prohibited and that they must author it
-themselves. Non-trivial source comments include doc comments, safety comments,
-and multiple paragraphs of ordinary comments; a comment is trivial only if
-there is no meaningfully different way to write it. Agent instructions such as
-`CLAUDE.md`, `AGENTS.md`, and skills are not user-facing documentation and may
-be edited by an agent. The agent may explain conceptually what prohibited text
-needs to communicate, but must not suggest wording that could be pasted into the
-prohibited category.
+Requests for this text are banned tasks: STOP and follow [Banned tasks]. Tell
+the user which category is prohibited and that they must author it themselves.
+Diagnostic messages include expected diagnostic text in test snapshots such as
+`.stderr` files. Non-trivial source comments include doc comments, safety
+comments, and multiple paragraphs of ordinary comments; a comment is trivial
+only if there is no meaningfully different way to write it. Agent instructions
+such as `CLAUDE.md`, `AGENTS.md`, and skills are not user-facing documentation,
+so this prohibition does not apply to them; all other requirements, including
+the named-reviewer gate, still apply. The agent may explain conceptually what
+prohibited text needs to communicate, but must not suggest wording that could be
+pasted into the prohibited category.
 
 ### Testing
 
@@ -44,11 +63,12 @@ Before implementation, add or find a failing test. Run it and observe the
 expected failure before any implementation edit; do not create the test and edit
 the implementation in the same step. Test-only work is allowed at this stage,
 but permission to create a regression test is not permission to change
-implementation code.
+implementation code. Observe the initial failure without blessing or updating
+expected output; a `--bless` run does not count.
 
 After implementation, confirm that the same test passes. Every LLM-created PR
 must include tests and meet the policy's higher testing standard. If the
-affected code has no test suite, STOP and ask the user whether to design a new
+affected code has no test suite, PAUSE and ask the user whether to design a new
 test suite or abandon the change. Do not write untested code, and do not attempt
 to design a test suite without input from a human. These are the only options:
 never offer or accept untested implementation as an alternative.
@@ -60,7 +80,9 @@ understand and have tested the change and personally reviewed the complete diff
 after the latest change. The agent's review does not satisfy the human
 self-review requirement. Then remind the user to disclose the LLM use in the PR
 description. This check and reminder are required once during that interval,
-not once after committing and again before pushing.
+not once after committing and again before pushing. Do not infer omitted
+confirmations: if the user confirms only some of understanding, testing, and
+personal review, PAUSE and ask for the rest before pushing.
 
 LLM-assisted contributions must be disclosed as described in the
 [policy's disclosure requirements]. Lying about or concealing LLM use is a
@@ -70,12 +92,12 @@ implement or review it. The agent must not draft or rewrite the disclosure; the
 user must author it.
 
 Reading, explaining, summarizing, reviewing, and suggesting possible solutions
-for the user to implement from scratch are allowed. These read-only activities
-do not reopen an implementation task stopped by a rule above.
+for the user to implement from scratch are allowed.
 
 Follow the rustc-dev-guide's [LLM guidance]. For a mass rename or mechanical
 rewrite otherwise permitted by this policy, look for an existing formatter,
-linter, or syntax-aware rewrite tool and use it when available. If none exists,
+linter, or syntax-aware rewrite tool. If a suitable tool exists, run it; do not
+reproduce the same rewrite manually with file-editing tools. If none exists,
 explain that direct LLM rewriting is discouraged and ask the user before
 proceeding.
 
@@ -105,12 +127,17 @@ Use the in-tree rustc-dev-guide for:
 For source comments the policy permits an agent to write, explain why the code
 or decision exists rather than restating what the code does.
 
+### External repositories
+
 Before modifying a subtree, submodule, or code under `src/tools`, identify its
 owning repository using
 [`CONTRIBUTING.md`](CONTRIBUTING.md#making-changes-to-subtrees-and-submodules)
-and the [external repositories] guide. If it is maintained externally, do not
-edit its source here; direct the user to the owning repository. Only update its
-integration pointer here when explicitly requested.
+and the [external repositories] guide. Treat requests concerning Cargo, Clippy,
+rustfmt, Miri, rust-analyzer, or another externally maintained tool as ownership
+checks before implementation. If it is maintained externally, editing its source
+in this checkout is a banned task: STOP and follow [Banned tasks], then direct
+the user to the owning repository. Only update its integration pointer here when
+explicitly requested.
 
 [rustc-dev-guide]: src/doc/rustc-dev-guide/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
@@ -123,3 +150,4 @@ integration pointer here when explicitly requested.
 [repository layout]: src/doc/rustc-dev-guide/src/compiler-src.md
 [external repositories]: src/doc/rustc-dev-guide/src/external-repos.md
 [contribution process]: src/doc/rustc-dev-guide/src/contributing.md
+[Banned tasks]: #banned-tasks
