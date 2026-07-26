@@ -385,7 +385,15 @@ async function snapshotInputRevision(args, env) {
       snapshotEnv,
       "input snapshot comparison",
     );
-    if (tree.stdout.trim() === headTree.stdout.trim()) return "HEAD";
+    if (tree.stdout.trim() === headTree.stdout.trim()) {
+      const head = await runCheckedCommand(
+        { command: "git", args: ["-C", args.rustRepo, "rev-parse", "HEAD"] },
+        args.rustRepo,
+        snapshotEnv,
+        "input snapshot revision resolution",
+      );
+      return head.stdout.trim();
+    }
 
     const commit = await runCheckedCommand(
       {

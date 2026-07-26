@@ -149,11 +149,14 @@ test("setup state is isolated, committed, and visible to parallel runs", async (
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "alpha");
   await writeScenario(fixture.scenarios, "beta", "test -f fixture.txt && printf command > command.txt");
+  const rustRevision = git(fixture.rustRepo, "rev-parse", "HEAD");
 
   const result = runGenerator({ ...fixture, extraArgs: ["--jobs", "2"] });
   assert.equal(result.status, 0, result.stderr);
   assert.match(await readFile(path.join(fixture.scenarios, "alpha", "codex.md"), "utf8"), /alpha\|command\|Fixture alpha\|true/);
   assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta\|true/);
+  const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "alpha", "codex.meta.json"), "utf8"));
+  assert.equal(metadata.rust_revision, rustRevision);
 
   assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
   await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
