@@ -6,6 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { clearInterval, setInterval } from "node:timers";
+import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
 const PROVIDER_MODELS = {
@@ -77,6 +78,21 @@ function formatDuration(ms) {
   const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
   const seconds = String(totalSeconds % 60).padStart(2, "0");
   return `${minutes}:${seconds}`;
+}
+
+async function runProgressStep(enabled, label, operation) {
+  if (!enabled) return await operation();
+
+  const startedAt = Date.now();
+  console.error(`→ ${label}`);
+  try {
+    const result = await operation();
+    console.error(`✓ ${label} (${formatDuration(Date.now() - startedAt)})`);
+    return result;
+  } catch (error) {
+    console.error(`✗ ${label} (${formatDuration(Date.now() - startedAt)})`);
+    throw error;
+  }
 }
 
 function buildClaudeCommand(run, turn, state) {
@@ -492,31 +508,46 @@ async function collectProviderVersions(args, env) {
 }
 
 async function prepareCheckoutTemplate(args, env) {
-  if (args.dryRun || process.platform !== "darwin") return null;
+  if (args.dryRun || !args.useCheckoutTemplate) return null;
 
   const tempDir = await mkdtemp(path.join(tmpdir(), "transcript-template-"));
   const checkout = path.join(tempDir, "checkout");
   try {
-    await runCheckedCommand(
-      { command: "git", args: ["clone", "--shared", "--no-checkout", args.rustRepo, checkout] },
-      args.rustRepo,
-      env,
-      "checkout template clone",
+    await runProgressStep(
+      args.progress,
+      "Cloning checkout template",
+      async () =>
+        await runCheckedCommand(
+          { command: "git", args: ["clone", "--shared", "--no-checkout", args.rustRepo, checkout] },
+          args.rustRepo,
+          env,
+          "checkout template clone",
+        ),
     );
-    await runCheckedCommand(
-      { command: "git", args: ["-C", checkout, "checkout", "--detach", args.inputRevision] },
-      checkout,
-      env,
-      "checkout template setup",
+    await runProgressStep(
+      args.progress,
+      "Checking out Rust input revision",
+      async () =>
+        await runCheckedCommand(
+          { command: "git", args: ["-C", checkout, "checkout", "--detach", args.inputRevision] },
+          checkout,
+          env,
+          "checkout template setup",
+        ),
     );
-    await runCheckedCommand(
-      {
-        command: "git",
-        args: ["submodule", "update", "--init", "--depth", "1", "--", "library/backtrace", "src/tools/cargo"],
-      },
-      checkout,
-      env,
-      "checkout template submodule setup",
+    await runProgressStep(
+      args.progress,
+      "Initializing Cargo and backtrace submodules",
+      async () =>
+        await runCheckedCommand(
+          {
+            command: "git",
+            args: ["submodule", "update", "--init", "--depth", "1", "--", "library/backtrace", "src/tools/cargo"],
+          },
+          checkout,
+          env,
+          "checkout template submodule setup",
+        ),
     );
   } catch (error) {
     await rm(tempDir, { recursive: true, force: true });
@@ -580,29 +611,35 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
   };
 
   try {
-    let copiedTemplate = false;
+    await runCheckedCommand(actualCloneCommand, args.rustRepo, env, `${run.name} (${run.provider}) clone setup`);
+    await runCheckedCommand(actualCheckoutCommand, worktree, env, `${run.name} (${run.provider}) checkout setup`);
     if (args.checkoutTemplate) {
-      const copyResult = await runCommand(
-        { command: "cp", args: ["-cR", args.checkoutTemplate, worktree] },
-        tempDir,
-        false,
-        env,
-      );
-      copiedTemplate = copyResult.status === 0;
-      if (copiedTemplate) {
-        const refreshResult = await runCommand(
-          { command: "git", args: ["update-index", "--refresh"] },
+      for (const submodule of ["library/backtrace", "src/tools/cargo"]) {
+        await runCheckedCommand(
+          {
+            command: "git",
+            args: [
+              "config",
+              "--local",
+              `submodule.${submodule}.url`,
+              String(pathToFileURL(path.join(args.checkoutTemplate, ".git", "modules", submodule))),
+            ],
+          },
           worktree,
-          false,
           env,
+          `${run.name} (${run.provider}) local ${submodule} configuration`,
         );
-        copiedTemplate = refreshResult.status === 0;
       }
-      if (!copiedTemplate) await rm(worktree, { recursive: true, force: true });
-    }
-    if (!copiedTemplate) {
-      await runCheckedCommand(actualCloneCommand, args.rustRepo, env, `${run.name} (${run.provider}) clone setup`);
-      await runCheckedCommand(actualCheckoutCommand, worktree, env, `${run.name} (${run.provider}) checkout setup`);
+      await runCheckedCommand(
+        {
+          command: "git",
+          args: ["-c", "protocol.file.allow=always", ...submoduleArgs],
+        },
+        worktree,
+        env,
+        `${run.name} (${run.provider}) local submodule setup`,
+      );
+    } else {
       await runCheckedCommand(
         { command: "git", args: submoduleArgs },
         worktree,
@@ -733,8 +770,16 @@ async function runScenario(run, args) {
   let runCheckout = null;
 
   try {
-    runCheckout = await prepareRunCheckout(run, args, runEnvironment.env, dryRunCommands);
-    await applyScenarioSetup(run, runCheckout.cwd, args, runCheckout.env, dryRunCommands);
+    runCheckout = await runProgressStep(
+      args.progress && !args.dryRun,
+      `Preparing ${run.name} (${run.provider}) checkout`,
+      async () => await prepareRunCheckout(run, args, runEnvironment.env, dryRunCommands),
+    );
+    await runProgressStep(
+      args.progress && !args.dryRun && Boolean(run.setup),
+      `Applying ${run.name} (${run.provider}) scenario setup`,
+      async () => await applyScenarioSetup(run, runCheckout.cwd, args, runCheckout.env, dryRunCommands),
+    );
 
     for (const [turnIndex, turn] of run.turns.entries()) {
       const progressLabel = `${run.name} (${run.provider}) turn ${turnIndex + 1}/${run.turns.length}`;
@@ -954,8 +999,16 @@ async function main() {
   const args = parseArgs(process.argv);
   const scenarios = await discoverScenarios(args);
   if (scenarios.length === 0) throw new Error("No matching scenarios");
-  args.harnessRevision = await snapshotHarnessRevision(args, scenarios, agentEnvironment());
-  args.providerVersions = await collectProviderVersions(args, agentEnvironment());
+  args.harnessRevision = await runProgressStep(
+    args.progress && !args.dryRun,
+    "Snapshotting harness inputs",
+    async () => await snapshotHarnessRevision(args, scenarios, agentEnvironment()),
+  );
+  args.providerVersions = await runProgressStep(
+    args.progress && !args.dryRun,
+    "Reading provider versions",
+    async () => await collectProviderVersions(args, agentEnvironment()),
+  );
 
   const cacheRoot = process.env.XDG_CACHE_HOME ?? path.join(homedir(), ".cache");
   args.bootstrapCachePath = path.resolve(
@@ -973,15 +1026,20 @@ async function main() {
       agentEnvironment(),
     );
     if (gitCheck.status !== 0) throw new Error(`--rust-repo is not a Git repository: ${args.rustRepo}`);
-    args.inputRevision = await snapshotInputRevision(args, agentEnvironment());
+    args.inputRevision = await runProgressStep(
+      args.progress,
+      "Snapshotting Rust inputs",
+      async () => await snapshotInputRevision(args, agentEnvironment()),
+    );
   }
 
+  const runs = scenarios.flatMap((scenario) =>
+    args.providers.map((provider) => ({ ...scenario, provider, bootstrapCachePath: args.bootstrapCachePath })),
+  );
+  args.useCheckoutTemplate = runs.length > 1;
   const template = await prepareCheckoutTemplate(args, agentEnvironment());
   args.checkoutTemplate = template?.checkout ?? null;
   try {
-    const runs = scenarios.flatMap((scenario) =>
-      args.providers.map((provider) => ({ ...scenario, provider, bootstrapCachePath: args.bootstrapCachePath })),
-    );
     await runAll(runs, args);
   } finally {
     await template?.cleanup();
