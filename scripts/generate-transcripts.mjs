@@ -216,7 +216,7 @@ function collectCodexMarkdown(line, out, state) {
     state.codexAgentMessageTexts.add(text);
     out.push(`⏺ ${text}`);
   } else if (item.type === "command_execution") {
-    out.push(`⏺ Bash(${item.command})`);
+    out.push(`⏺ Command(${item.command})`);
   } else if (item.type === "file_change") {
     out.push(`⏺ ${item.change_type ?? "Edit"}(${item.path ?? "file"})`);
   } else if (item.type === "web_search") {
@@ -252,7 +252,6 @@ async function runCommand(
       const idle = Date.now() - lastOutputAt;
       if (idle >= 30000) {
         process.stderr.write(`⏳ ${progressLabel} still running after ${formatDuration(elapsed)} (${formatDuration(idle)} idle)\n`);
-        lastOutputAt = Date.now();
       }
     }, 30000);
 
