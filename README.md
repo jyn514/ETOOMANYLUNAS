@@ -5,43 +5,87 @@ Codex transcripts use `gpt-5.4-mini`.
 
 ## Generating transcripts
 
-Use `scripts/generate-transcripts.mjs` to run the same prompt scenarios through Claude Code or Codex non-interactively.
-Scenarios live in each transcript directory as `scenario.json`.
-Runs exclude the caller's global agent instructions (`~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`) while still allowing repository-local instruction files in the Rust checkout.
-Runs allow agent network access for issue lookup: Claude is invoked with `WebFetch` and `WebSearch`, and Codex is invoked with `sandbox_workspace_write.network_access=true`.
-Agent subprocesses run with non-interactive Git/SSH prompts disabled. SSH agent access is cleared, and Git/SSH askpass helpers are forced to fail fast instead of opening a prompt.
-Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` only if you want to restore inherited SSH agent behavior.
-The runner snapshots the Rust checkout's current repository-local agent instructions (`CLAUDE.md`,
-`AGENTS.md`, `.claude`, `.codex`, and `.agents`), including uncommitted and non-ignored untracked
-files. It then creates a disposable shared Git clone for each scenario/provider run. Other checkout
-changes are not included. For multi-run batches, the runner prepares Cargo and backtrace once and
-initializes each run's submodules from those local copies. Each run has an independent checkout and
-writable Git metadata, so Rust's `x` commands and local commits cannot mutate the supplied checkout.
-This keeps parallel runs independent.
-Codex runs receive isolated command rules that allow `git add` and `git commit` to write the
-disposable clone's protected Git metadata. No rule permits pushing.
-Bootstrap downloads are shared across those clones through `bootstrap-cache-path`. The cache defaults
-to `$XDG_CACHE_HOME/definitely-not-rust/bootstrap`, or `~/.cache/definitely-not-rust/bootstrap` when
-`XDG_CACHE_HOME` is unset. Set `TRANSCRIPTS_BOOTSTRAP_CACHE` to use another location. This reuses
-downloaded archives, not build outputs.
+Use `scripts/generate-transcripts.mjs` to run prompt scenarios through Claude
+Code or Codex non-interactively. Each transcript directory contains its
+`scenario.json`.
+
+### Run scenarios
 
 ```sh
 ./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --reviewer Esteban --provider claude
 ./scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust --reviewer Esteban --provider codex
 ```
 
-Useful flags:
+If `claude` or `codex` is not on `PATH`, set
+`CLAUDE_BIN=/full/path/to/claude` or `CODEX_BIN=/full/path/to/codex`.
 
-- `--reviewer Esteban` replaces `{{reviewer}}` in scenario prompts. It is required when any selected scenario uses that placeholder; choose someone other than the person running the tests.
+### Select runs
+
+- `--reviewer Esteban` replaces `{{reviewer}}` in scenario prompts. It is
+  required when a selected scenario uses that placeholder; choose someone other
+  than the person running the tests.
 - `--only diagnostics` runs one scenario. Repeat it to run multiple scenarios.
 - `--skip diagnostics` skips one scenario. Repeat it to skip multiple scenarios.
-- `--jobs 4` runs up to four scenario/provider runs at once. Turns within one scenario still run serially.
+- `--jobs 4` runs up to four scenario/provider runs at once. Turns within a
+  scenario still run serially.
 - `--dry-run` prints commands without calling the model.
-- `--provider claude|codex` selects a provider. Repeat it to run multiple providers. If omitted, both run.
+- `--provider claude|codex` selects a provider. Repeat it to run multiple
+  providers. If omitted, both run.
 
-If `claude` or `codex` is not on `PATH`, set `CLAUDE_BIN=/full/path/to/claude` or `CODEX_BIN=/full/path/to/codex`.
+### Isolation and network access
 
-The script prints per-run and per-turn progress on stderr, including agent messages and tool events as they arrive. If a child process goes silent for 30 seconds, it emits a heartbeat line that names the stuck run and turn. Use `--no-progress` for quiet operation.
+The runner snapshots these repository-local agent instructions from the Rust
+checkout, including uncommitted and non-ignored untracked files:
+
+- `CLAUDE.md`
+- `AGENTS.md`
+- `.claude`
+- `.codex`
+- `.agents`
+
+It excludes other checkout changes and the caller's global instructions
+(`~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`).
+
+Each scenario/provider run receives an independent disposable shared Git clone
+with writable Git metadata. Rust's `x` commands and local commits cannot mutate
+the supplied checkout. Codex command rules permit `git add` and `git commit` in
+the disposable clone, but never pushing.
+
+Agents may access the network for issue lookup. Claude receives `WebFetch` and
+`WebSearch`; Codex receives
+`sandbox_workspace_write.network_access=true`. Git and SSH prompts are
+non-interactive, SSH agent access is cleared, and askpass helpers fail instead
+of opening a prompt. Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` to restore inherited
+SSH agent behavior.
+
+### Shared setup and cache
+
+For multi-run batches, the runner prepares Cargo and backtrace once and
+initializes each run's submodules from those local copies.
+
+Bootstrap downloads are shared through `bootstrap-cache-path`. The cache
+defaults to `$XDG_CACHE_HOME/definitely-not-rust/bootstrap`, or
+`~/.cache/definitely-not-rust/bootstrap` when `XDG_CACHE_HOME` is unset. Set
+`TRANSCRIPTS_BOOTSTRAP_CACHE` to use another location. This reuses downloaded
+archives, not build outputs.
+
+### Progress and output
+
+The script prints agent messages and tool events on stderr as they arrive. If a
+child process is silent for 30 seconds, a heartbeat names the run and turn. Use
+`--no-progress` for quiet operation.
+
+Each run writes `<scenario>/<provider>.md` and
+`<scenario>/<provider>.meta.json`. The metadata records:
+
+- provider, model, and CLI version;
+- generation time and reviewer, when supplied;
+- synthetic harness and Rust input revisions.
+
+The harness revision starts from harness `HEAD` and includes uncommitted changes
+only to the runner, command rules, selected scenarios, and their declared setup
+patches. Transcript outputs and annotations are excluded. The raw JSONL event
+stream is used only while rendering the Markdown transcript.
 
 ## Testing the runner
 
@@ -51,14 +95,8 @@ Run the runner tests with:
 node --test scripts/generate-transcripts.test.mjs
 ```
 
-The tests use temporary Git repositories and a fake Codex executable; they do not call a model.
-
-Each run writes `<scenario>/<provider>.md` and `<scenario>/<provider>.meta.json`. The metadata records
-the provider, model and CLI version, generation time, reviewer when supplied, synthetic harness input
-revision, and synthetic Rust input revision. The harness revision starts from harness `HEAD` and
-includes uncommitted changes only to the runner, command rules, selected scenarios, and their declared
-setup patches; transcript outputs and annotations are excluded. The raw JSONL event stream is only
-used while rendering the Markdown transcript.
+The tests use temporary Git repositories and a fake Codex executable; they do
+not call a model.
 
 ## Scenario setup
 
