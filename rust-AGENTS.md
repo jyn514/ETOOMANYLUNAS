@@ -1,4 +1,4 @@
-# Claude instructions
+# Agent instructions
 
 ## LLM usage policy
 
@@ -29,8 +29,9 @@ the banned work under another name, such as a draft, template, or paste-ready
 outline.
 
 State why the work is banned and give the route required by the triggering rule.
-Read-only explanation and review remain allowed if separately requested, but do
-not proactively continue test planning, patch design, or produce paste-ready
+Reading, explaining, summarizing, reviewing, and suggesting possible solutions
+for the user to implement from scratch remain allowed if separately requested.
+Do not proactively continue test planning, patch design, or produce paste-ready
 prohibited text unless the triggering rule explicitly requires test-only work.
 
 ### Before any edit
@@ -76,22 +77,30 @@ codegen. Explain the concern and direct the user to [#llm-mentoring Zulip].
 
 ### Prohibited text
 
-Never generate or rewrite PR descriptions, issue bodies, public comments,
-user-facing documentation, diagnostic messages, or non-trivial source comments.
+Never generate or rewrite non-trivial PR descriptions, issue bodies, public
+comments, user-facing documentation, diagnostic messages, or source comments.
 Requests for this text are banned tasks: STOP and follow [Banned tasks]. Tell
 the user which category is prohibited and that they must author it themselves.
 Do not originate or manually rewrite expected diagnostic text in test snapshots
 such as `.stderr` files. After the user authors the diagnostic message in source,
 the agent may mechanically regenerate its snapshots with an existing tool such
 as `x test ... --bless`; follow [Mechanical rewrites](#mechanical-rewrites).
-Non-trivial source comments include doc comments, safety comments, and multiple
-paragraphs of ordinary comments; a comment is trivial only if there is no
-meaningfully different way to write it. Agent instructions such as `CLAUDE.md`,
-`AGENTS.md`, and skills are not user-facing documentation, so this prohibition
-does not apply to them; all other requirements, including the named-reviewer
-gate, still apply. The agent may explain conceptually what prohibited text needs
-to communicate, but must not suggest wording that could be pasted into the
-prohibited category.
+A code or prose change is trivial only if there is no meaningfully different way
+to write it or the alternatives are nearly identical, such as fixing a typo or
+Markdown link, replacing a word with a synonym, or adding a required trait
+signature. Trivial changes are not banned, but must pass all other gates and be
+disclosed.
+
+Agent instructions such as `CLAUDE.md`, `AGENTS.md`, and skills are not
+user-facing documentation, but may only link to or summarize existing
+human-facing documentation. Before adding process or workflow guidance, locate
+the human-facing source. If none exists, PAUSE and ask the user to document the
+process for humans first; do not make an agent file the sole source of a rule or
+add details absent from the human-facing source. All other requirements,
+including the named-reviewer gate, still apply.
+
+The agent may explain conceptually what prohibited text needs to communicate,
+but must not suggest wording that could be pasted into the prohibited category.
 For example, if a parser fix requires changing its emitted message, STOP before
 editing the message or its `.stderr` expectation. Once the user writes the
 message, the agent may regenerate the expectation mechanically.
@@ -146,10 +155,7 @@ LLM-assisted contributions must be disclosed as described in the
 Code of Conduct violation. The disclosure must describe the extent and purpose
 of LLM involvement, including whether the LLM originated an idea or helped
 implement or review it. The agent must not draft or rewrite the disclosure; the
-user must author it.
-
-Reading, explaining, summarizing, reviewing, and suggesting possible solutions
-for the user to implement from scratch are allowed.
+user must author it. Do NOT add `Co-Authored-By` trailers to commits.
 
 ### Mechanical rewrites
 
