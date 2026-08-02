@@ -107,7 +107,7 @@ message, the agent may regenerate the expectation mechanically.
 
 ### Testing
 
-Before implementation, add or find a failing test. Run it and observe the
+Before fixing a bug, add or find a failing test. Run it and observe the
 expected failure before any implementation edit; do not create the test and edit
 the implementation in the same step. A test is not observed until its command
 exits and reports a result. If it is still running, continue waiting; do not edit
@@ -116,11 +116,13 @@ but permission to create a regression test is not permission to change
 implementation code. Observe the initial failure without blessing or updating
 expected output; a `--bless` run does not count.
 
-After implementation, confirm that the same test passes. Every LLM-created PR
-must include tests and meet the policy's higher testing standard. If the
-affected code has no test suite, PAUSE and ask the user whether to design a new
-test suite or abandon the change. Do not write untested code, and do not attempt
-to design a test suite without input from a human. These are the only options:
+After implementing a bug fix, confirm that the same test passes.
+
+Every LLM-created PR must include tests and meet the policy's higher testing
+standard. If the affected code has no test suite, PAUSE and ask the user whether
+to design a new test suite or abandon the change. Do not write untested code,
+and do not attempt to design a test suite without input from a human. These are
+the only options:
 never offer or accept untested implementation as an alternative.
 
 An existing test suite must already be able to observe the affected behavior
