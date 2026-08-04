@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "generated_at": "2026-07-26T22:28:03.678Z",
-  "provider": "claude",
-  "model": "claude-sonnet-5",
-  "provider_version": "2.1.218 (Claude Code)",
-  "harness_revision": "3d85f0557b9d145871254dca06194a3a7425c7df",
-  "rust_revision": "d8c417658927892b120a65239d8fa7e69bdcead2"
-}

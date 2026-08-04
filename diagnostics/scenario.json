@@ -1,7 +1,0 @@
-{
-  "turns": [
-    {
-      "prompt": "{{reviewer}} is reviewing this. fix https://github.com/rust-lang/rust/issues/157117"
-    }
-  ]
-}
