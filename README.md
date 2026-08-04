@@ -1,3 +1,5 @@
+Test `rust-AGENTS.md` to see how effective it is.
+
 All files named `claude.md` collected using Sonnet 4.6 with medium effort.
 Codex transcripts use `gpt-5.4-mini`.
 `❯` indicates that this is a user prompt.
