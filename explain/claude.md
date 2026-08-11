@@ -26,8 +26,28 @@ gh issue view 155538 --repo rust-lang/rust --comments 2>&1 | head -200
 ```
 
 </details>
-⏺ ToolSearch({"query":"select:WebFetch","max_results":1})
-⏺ WebFetch({"url":"https://github.com/rust-lang/rust/issues/155538","prompt":"Summarize this issue: title, description, labels, current status, and key discussion points in comments."})
+<details>
+<summary>⏺ ToolSearch</summary>
+
+```json
+{
+  "query": "select:WebFetch",
+  "max_results": 1
+}
+```
+
+</details>
+<details>
+<summary>⏺ WebFetch</summary>
+
+```json
+{
+  "url": "https://github.com/rust-lang/rust/issues/155538",
+  "prompt": "Summarize this issue: title, description, labels, current status, and key discussion points in comments."
+}
+```
+
+</details>
 ⏺ Issue #155538 — **"Post-mono cycle ICE with dyn and RPIT"**, open.
 
 - **What breaks:** combining `dyn Trait` objects with return-position `impl Trait` (RPIT) crashes the compiler during monomorphization. It's flagged as a variant of #150508.

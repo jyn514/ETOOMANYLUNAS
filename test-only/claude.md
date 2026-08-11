@@ -12,7 +12,18 @@ grep -rn "nocapture" src/bootstrap/src 2>/dev/null
 ```
 
 </details>
-⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs","offset":390,"limit":60})
+<details>
+<summary>⏺ Read</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs",
+  "offset": 390,
+  "limit": 60
+}
+```
+
+</details>
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -29,8 +40,29 @@ grep -n "fn \|Flags::parse\|nocapture\|no_capture" src/bootstrap/src/core/config
 ```
 
 </details>
-⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs","offset":1})
-⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs","offset":190,"limit":50})
+<details>
+<summary>⏺ Read</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs",
+  "offset": 1
+}
+```
+
+</details>
+<details>
+<summary>⏺ Read</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs",
+  "offset": 190,
+  "limit": 50
+}
+```
+
+</details>
 <details>
 <summary>⏺ Command</summary>
 
@@ -39,8 +71,32 @@ grep -n "fn normalize_args" -A 20 src/bootstrap/src/core/config/flags.rs | head 
 ```
 
 </details>
-⏺ Edit({"replace_all":false,"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs","old_string":"use clap::CommandFactory;\nuse serde::Deserialize;","new_string":"use clap::{CommandFactory, Parser};\nuse serde::Deserialize;"})
-⏺ Edit({"replace_all":false,"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs","old_string":"#[test]\nfn clap_verify() {\n    Flags::command().debug_assert();\n}","new_string":"#[test]\nfn clap_verify() {\n    Flags::command().debug_assert();\n}\n\n#[test]\nfn nocapture_is_rejected() {\n    // The legacy `--nocapture` spelling was replaced by `--no-capture`; bootstrap\n    // should reject it rather than silently accepting it as an alias.\n    assert!(Flags::try_parse_from([\"x.py\", \"test\", \"--nocapture\"]).is_err());\n}"})
+<details>
+<summary>⏺ Edit</summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs",
+  "old_string": "use clap::CommandFactory;\nuse serde::Deserialize;",
+  "new_string": "use clap::{CommandFactory, Parser};\nuse serde::Deserialize;"
+}
+```
+
+</details>
+<details>
+<summary>⏺ Edit</summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs",
+  "old_string": "#[test]\nfn clap_verify() {\n    Flags::command().debug_assert();\n}",
+  "new_string": "#[test]\nfn clap_verify() {\n    Flags::command().debug_assert();\n}\n\n#[test]\nfn nocapture_is_rejected() {\n    // The legacy `--nocapture` spelling was replaced by `--no-capture`; bootstrap\n    // should reject it rather than silently accepting it as an alias.\n    assert!(Flags::try_parse_from([\"x.py\", \"test\", \"--nocapture\"]).is_err());\n}"
+}
+```
+
+</details>
 ⏺ Now run the test and observe the expected failure.
 <details>
 <summary>⏺ Command</summary>
@@ -59,7 +115,19 @@ Classification: this is CLI-argument-parsing/config plumbing in bootstrap, not c
 ❯ ok now fix it
 
 ⏺ Removing the `alias = "nocapture"` on the `no_capture` flag so `--nocapture` is rejected, per the classification already stated (not soundness-sensitive, reviewer Esteban already named).
-⏺ Edit({"replace_all":false,"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs","old_string":"        #[arg(long, alias = \"nocapture\")]\n        /// don't capture stdout/stderr of tests\n        no_capture: bool,","new_string":"        #[arg(long)]\n        /// don't capture stdout/stderr of tests\n        no_capture: bool,"})
+<details>
+<summary>⏺ Edit</summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs",
+  "old_string": "        #[arg(long, alias = \"nocapture\")]\n        /// don't capture stdout/stderr of tests\n        no_capture: bool,",
+  "new_string": "        #[arg(long)]\n        /// don't capture stdout/stderr of tests\n        no_capture: bool,"
+}
+```
+
+</details>
 ⏺ Confirming the regression test now passes.
 <details>
 <summary>⏺ Command</summary>

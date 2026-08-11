@@ -1,6 +1,16 @@
 ❯ Esteban is reviewing this. fix https://github.com/rust-lang/rust/issues/156410
 
-⏺ ToolSearch({"query":"select:WebFetch","max_results":1})
+<details>
+<summary>⏺ ToolSearch</summary>
+
+```json
+{
+  "query": "select:WebFetch",
+  "max_results": 1
+}
+```
+
+</details>
 <details>
 <summary>⏺ Command</summary>
 
@@ -9,7 +19,17 @@ gh issue view 156410 --repo rust-lang/rust
 ```
 
 </details>
-⏺ WebFetch({"url":"https://github.com/rust-lang/rust/issues/156410","prompt":"Summarize this GitHub issue: title, description, error/ICE text, reproduction code, and any labels indicating which component is affected."})
+<details>
+<summary>⏺ WebFetch</summary>
+
+```json
+{
+  "url": "https://github.com/rust-lang/rust/issues/156410",
+  "prompt": "Summarize this GitHub issue: title, description, error/ICE text, reproduction code, and any labels indicating which component is affected."
+}
+```
+
+</details>
 <details>
 <summary>⏺ Commands (8)</summary>
 
@@ -47,7 +67,17 @@ cat tests/crashes/README.md; echo ---; cat tests/crashes/150263.rs
 
 </details>
 ⏺ This matches the repo's own regression-test convention for known ICEs (`tests/crashes/*.rs` with `//@ known-bug: #NNNNN`). Let me add it and run it to confirm the failure.
-⏺ Write({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-tfFyVN/checkout/tests/crashes/156410.rs","content":"//@ known-bug: #156410\n#![feature(min_generic_const_args)]\n#![feature(loop_match)]\n\ntrait T {\n    type const N: usize;\n    fn a() {\n        let mut state;\n        #[loop_match]\n        loop {\n            state = 'blk: {\n                match state {\n                    0 => {\n                        #[const_continue]\n                        break 'blk Self::N\n                    }\n                    _ => todo!(),\n                }\n            }\n        }\n    }\n}\n"})
+<details>
+<summary>⏺ Write</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-tfFyVN/checkout/tests/crashes/156410.rs",
+  "content": "//@ known-bug: #156410\n#![feature(min_generic_const_args)]\n#![feature(loop_match)]\n\ntrait T {\n    type const N: usize;\n    fn a() {\n        let mut state;\n        #[loop_match]\n        loop {\n            state = 'blk: {\n                match state {\n                    0 => {\n                        #[const_continue]\n                        break 'blk Self::N\n                    }\n                    _ => todo!(),\n                }\n            }\n        }\n    }\n}\n"
+}
+```
+
+</details>
 <details>
 <summary>⏺ Command</summary>
 
@@ -57,11 +87,40 @@ cat tests/crashes/README.md; echo ---; cat tests/crashes/150263.rs
 
 </details>
 ⏺ Build is running in the background (likely first-time stage1 build). I'll wait for it to finish before drawing conclusions.
-⏺ ToolSearch({"query":"select:Monitor","max_results":1})
+<details>
+<summary>⏺ ToolSearch</summary>
+
+```json
+{
+  "query": "select:Monitor",
+  "max_results": 1
+}
+```
+
+</details>
 ⏺ I'll wait for the background build/test to complete rather than poll.
-⏺ TaskCreate({"subagent_type":"general-purpose"})
+<details>
+<summary>⏺ TaskCreate</summary>
+
+```json
+{
+  "subagent_type": "general-purpose"
+}
+```
+
+</details>
 ⏺ No task tracking needed here — just waiting on the running build. Nothing else to do until it completes.
-⏺ ScheduleWakeup({"delaySeconds":3600,"reason":"fallback in case the background rustc test-build notification is missed"})
+<details>
+<summary>⏺ ScheduleWakeup</summary>
+
+```json
+{
+  "delaySeconds": 3600,
+  "reason": "fallback in case the background rustc test-build notification is missed"
+}
+```
+
+</details>
 <details>
 <summary>⏺ Command</summary>
 

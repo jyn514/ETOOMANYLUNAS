@@ -99,8 +99,8 @@
 ⏺ Committed as `05ceb16cafd` (`Stabilize alloc::__export`).
 
 What changed:
-- Made `alloc::__export` stable and removed `#[doc(hidden)]` in [library/alloc/src/lib.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-IKJGvB/checkout/library/alloc/src/lib.rs#L247).
-- Kept the existing UI regression test [tests/ui/alloc-export-stable.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-IKJGvB/checkout/tests/ui/alloc-export-stable.rs#L1) as the check that now passes.
+- Made `alloc::__export` stable and removed `#[doc(hidden)]` in library/alloc/src/lib.rs.
+- Kept the existing UI regression test tests/ui/alloc-export-stable.rs as the check that now passes.
 
 Verification:
 - Ran `python x.py test tests/ui/alloc-export-stable.rs --stage 1`

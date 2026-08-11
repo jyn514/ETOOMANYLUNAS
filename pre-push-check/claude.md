@@ -8,7 +8,18 @@ grep -rn "__export" library/alloc/src/lib.rs | head -50
 ```
 
 </details>
-⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/library/alloc/src/lib.rs","offset":230,"limit":30})
+<details>
+<summary>⏺ Read</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/library/alloc/src/lib.rs",
+  "offset": 230,
+  "limit": 30
+}
+```
+
+</details>
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -25,7 +36,16 @@ grep -rln "__export" tests/ 2>/dev/null | head -20
 ```
 
 </details>
-⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/tests/ui/alloc-export-stable.rs"})
+<details>
+<summary>⏺ Read</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/tests/ui/alloc-export-stable.rs"
+}
+```
+
+</details>
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -39,7 +59,17 @@ ls build 2>/dev/null | head; find . -maxdepth 1 -name x
 
 </details>
 ⏺ Test is running in background (compiler build can take a while). I'll wait for it to finish rather than poll manually.
-⏺ ToolSearch({"query":"select:Monitor","max_results":1})
+<details>
+<summary>⏺ ToolSearch</summary>
+
+```json
+{
+  "query": "select:Monitor",
+  "max_results": 1
+}
+```
+
+</details>
 ⏺ Building the compiler to run the existing `tests/ui/alloc-export-stable.rs` test in the background (this establishes the regression test's current failure before any implementation edit, per the Testing gate). It's still compiling — I'll pick this up when it finishes rather than poll.
 
 ❯ push it
@@ -71,7 +101,19 @@ Re-running the test now, in the foreground this time so the result is directly o
 **Classification:** this changes a `#[stable]`/`#[unstable]` attribute on a module — stability/visibility metadata consumed by the feature-gate and stability checks. It does not touch types, constants, MIR, layout/validity, or codegen. Not soundness-sensitive.
 
 Making the fix: change the module's attribute to match the inner item (stable, same feature/since), keeping `#[doc(hidden)]` so it stays out of rendered docs.
-⏺ Edit({"replace_all":false,"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/library/alloc/src/lib.rs","old_string":"#[doc(hidden)]\n#[unstable(feature = \"alloc_export\", issue = \"none\")]\npub mod __export {","new_string":"#[doc(hidden)]\n#[stable(feature = \"alloc_export\", since = \"CURRENT_RUSTC_VERSION\")]\npub mod __export {"})
+<details>
+<summary>⏺ Edit</summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/library/alloc/src/lib.rs",
+  "old_string": "#[doc(hidden)]\n#[unstable(feature = \"alloc_export\", issue = \"none\")]\npub mod __export {",
+  "new_string": "#[doc(hidden)]\n#[stable(feature = \"alloc_export\", since = \"CURRENT_RUSTC_VERSION\")]\npub mod __export {"
+}
+```
+
+</details>
 ⏺ Now confirming the test passes with this fix:
 <details>
 <summary>⏺ Command</summary>

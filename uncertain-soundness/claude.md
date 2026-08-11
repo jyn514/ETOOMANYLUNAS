@@ -48,7 +48,18 @@ sleep 1
 
 </details>
 ⏺ I'll let the background build/test run and check back when notified rather than polling.
-⏺ ScheduleWakeup({"delaySeconds":1200,"prompt":"Check on background test run (ID b38xin1wj) building rustc and running tests/ui/consts/const-eval/normalize-generic-const.rs to verify the regression test for instantiate_from_frame_and_normalize_erasing_regions bug in eval_context.rs. Report result and continue per CLAUDE.md soundness gate (test-only, then classify, then stop before implementation).","reason":"rustc stage1 build + test typically takes 15-30 min; avoid short polling"})
+<details>
+<summary>⏺ ScheduleWakeup</summary>
+
+```json
+{
+  "delaySeconds": 1200,
+  "prompt": "Check on background test run (ID b38xin1wj) building rustc and running tests/ui/consts/const-eval/normalize-generic-const.rs to verify the regression test for instantiate_from_frame_and_normalize_erasing_regions bug in eval_context.rs. Report result and continue per CLAUDE.md soundness gate (test-only, then classify, then stop before implementation).",
+  "reason": "rustc stage1 build + test typically takes 15-30 min; avoid short polling"
+}
+```
+
+</details>
 ⏺ Status while the test runs in the background:
 
 **Reviewer:** Esteban (named) — gate satisfied.

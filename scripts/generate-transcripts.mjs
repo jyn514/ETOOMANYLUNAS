@@ -220,6 +220,18 @@ function markdownFence(text) {
   return "`".repeat(Math.max(3, longestRun + 1));
 }
 
+function renderDetails(out, label, language, body) {
+  const fence = markdownFence(body);
+  out.push("<details>", `<summary>⏺ ${label}</summary>`, "", `${fence}${language}`, body, fence, "", "</details>");
+}
+
+function stripLocalLinkTargets(text) {
+  return text.replace(
+    /\[([^\]]+)]\(\s*(?:sandbox:)?\/(?:private|Users)\/[^)]*\)/g,
+    "$1",
+  );
+}
+
 function flushCommands(out, state) {
   if (state.commands.length === 0) return;
 
@@ -242,13 +254,13 @@ function collectClaudeMarkdown(line, out, state) {
       if (item.type === "text" && item.text?.trim()) {
         flushCommands(out, state);
         state.claudeSawAssistantText = true;
-        out.push(`⏺ ${item.text.trim()}`);
+        out.push(`⏺ ${stripLocalLinkTargets(item.text.trim())}`);
       }
       if (item.type === "tool_use" && item.name === "Bash" && typeof item.input?.command === "string") {
         state.commands.push(item.input.command);
       } else if (item.type === "tool_use") {
         flushCommands(out, state);
-        out.push(`⏺ ${item.name ?? "tool"}(${JSON.stringify(item.input ?? {})})`);
+        renderDetails(out, item.name ?? "tool", "json", JSON.stringify(item.input ?? {}, null, 2));
       }
     }
     return;
@@ -256,7 +268,7 @@ function collectClaudeMarkdown(line, out, state) {
 
   if (event.type === "result" && event.subtype === "success" && event.result?.trim() && !state.claudeSawAssistantText) {
     flushCommands(out, state);
-    out.push(`⏺ ${event.result.trim()}`);
+    out.push(`⏺ ${stripLocalLinkTargets(event.result.trim())}`);
   }
 }
 
@@ -269,7 +281,7 @@ function collectCodexMarkdown(line, out, state) {
   if (event.type !== "item.completed" || !item) return;
 
   if (item.type === "agent_message" && item.text?.trim()) {
-    const text = item.text.trim();
+    const text = stripLocalLinkTargets(item.text.trim());
     if (state.codexAgentMessageTexts.has(text)) return;
     state.codexAgentMessageTexts.add(text);
     flushCommands(out, state);

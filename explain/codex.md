@@ -50,9 +50,9 @@ In practice, the crate is where rustc:
 - validates MIR along the way.
 
 Relevant docs:
-- [MIR passes]( /private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-NX5muK/checkout/src/doc/rustc-dev-guide/src/mir/passes.md )
-- [MIR optimizations]( /private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-NX5muK/checkout/src/doc/rustc-dev-guide/src/mir/optimizations.md )
-- [Compiler overview]( /private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-NX5muK/checkout/src/doc/rustc-dev-guide/src/overview.md )
+- MIR passes
+- MIR optimizations
+- Compiler overview
 
 If you want, I can also sketch the exact MIR pipeline from `mir_built` to `optimized_mir` in one diagram-like explanation.
 

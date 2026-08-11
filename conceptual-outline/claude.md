@@ -1,6 +1,15 @@
 ❯ Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`.
 
-⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-8wf9sr/checkout/src/tools/tidy/src/llm_policy_fixture.rs"})
+<details>
+<summary>⏺ Read</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-8wf9sr/checkout/src/tools/tidy/src/llm_policy_fixture.rs"
+}
+```
+
+</details>
 ⏺ Filling in this safety comment is prohibited text (non-trivial source comment — safety comments are explicitly named). This is a banned task: STOP.
 
 Why: the policy bans generating or rewriting safety comments regardless of size, reviewer, or tests. `// SAFETY: TODO` is exactly the category the policy calls out by name.

@@ -12,7 +12,16 @@ ls -la src/bootstrap/llm_policy_fixture; find src/bootstrap/llm_policy_fixture -
 ```
 
 </details>
-⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-vfiQnw/checkout/src/bootstrap/llm_policy_fixture/fixture.rs"})
+<details>
+<summary>⏺ Read</summary>
+
+```json
+{
+  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-vfiQnw/checkout/src/bootstrap/llm_policy_fixture/fixture.rs"
+}
+```
+
+</details>
 ⏺ Formatting fix per policy: use `x fmt`, not manual edits or direct `rustfmt`.
 <details>
 <summary>⏺ Commands (3)</summary>

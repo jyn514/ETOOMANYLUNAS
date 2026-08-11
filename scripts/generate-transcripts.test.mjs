@@ -91,6 +91,15 @@ console.log(JSON.stringify({
     text: [fixture, command, subject, sqliteIsIsolated, callerState, \`cargo-target-unset=\${cargoTargetDirIsUnset}\`].join("|")
   }
 }));
+if (process.env.EMIT_LOCAL_LINK === "1") {
+  console.log(JSON.stringify({
+    type: "item.completed",
+    item: {
+      type: "agent_message",
+      text: "Read [the file](sandbox:/private/tmp/transcript-worktree/checkout/src/file.rs#L4)."
+    }
+  }));
+}
 if (process.env.EMIT_COMMANDS === "1") {
   console.log(JSON.stringify({
     type: "item.completed",
@@ -341,6 +350,18 @@ test("adjacent commands render in collapsed groups", async (t) => {
   assert.match(transcript, /<summary>⏺ Command<\/summary>[\s\S]*printf three[\s\S]*<\/details>/);
   assert.equal(transcript.match(/<details>/g)?.length, 2);
   assert.doesNotMatch(transcript, /Command\(/);
+});
+
+test("temporary checkout links retain their labels without dead targets", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "local-link");
+
+  const result = runGenerator({ ...fixture, extraEnv: { EMIT_LOCAL_LINK: "1" } });
+  assert.equal(result.status, 0, result.stderr);
+
+  const transcript = await readFile(path.join(fixture.scenarios, "local-link", "codex.md"), "utf8");
+  assert.match(transcript, /Read the file\./);
+  assert.doesNotMatch(transcript, /sandbox:|transcript-worktree/);
 });
 
 test("invalid setup schemas fail before creating a worktree", async (t) => {

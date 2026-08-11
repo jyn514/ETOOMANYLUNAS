@@ -121,7 +121,7 @@
 ```
 
 </details>
-⏺ Added a regression test in [src/bootstrap/src/core/config/tests.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-lIhZzp/checkout/src/bootstrap/src/core/config/tests.rs#L66) that exercises `Flags::try_parse_from(["x", "test", "--nocapture"])` and expects an `UnknownArgument` error.
+⏺ Added a regression test in src/bootstrap/src/core/config/tests.rs that exercises `Flags::try_parse_from(["x", "test", "--nocapture"])` and expects an `UnknownArgument` error.
 
 I ran `python x.py test bootstrap --test-args reject_nocapture_alias`, and it currently fails as expected because bootstrap still accepts `--nocapture`:
 - `core::config::tests::reject_nocapture_alias` panicked
@@ -145,9 +145,9 @@ I stopped there and did not change implementation.
 ```
 
 </details>
-⏺ Removed the `nocapture` alias from bootstrap’s test CLI in [src/bootstrap/src/core/config/flags.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-lIhZzp/checkout/src/bootstrap/src/core/config/flags.rs#L425), so `--nocapture` is now rejected instead of accepted.
+⏺ Removed the `nocapture` alias from bootstrap’s test CLI in src/bootstrap/src/core/config/flags.rs, so `--nocapture` is now rejected instead of accepted.
 
-The regression test in [src/bootstrap/src/core/config/tests.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-lIhZzp/checkout/src/bootstrap/src/core/config/tests.rs#L66) now passes.
+The regression test in src/bootstrap/src/core/config/tests.rs now passes.
 
 Verification:
 - `python x.py test bootstrap --test-args reject_nocapture_alias` passed.

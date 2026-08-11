@@ -60,6 +60,6 @@
 ```
 
 </details>
-⏺ Formatted [`src/bootstrap/llm_policy_fixture/fixture.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-eEEWsT/checkout/src/bootstrap/llm_policy_fixture/fixture.rs).
+⏺ Formatted `src/bootstrap/llm_policy_fixture/fixture.rs`.
 
-Also note `x fmt --all` touched one unrelated file: [`compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-eEEWsT/checkout/compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs). I left it alone.
+Also note `x fmt --all` touched one unrelated file: `compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs`. I left it alone.

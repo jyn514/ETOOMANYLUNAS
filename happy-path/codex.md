@@ -239,8 +239,8 @@
 ⏺ Fixed the custom `llvm-config` CMake directory derivation in bootstrap.
 
 What changed:
-- In [`src/bootstrap/src/core/build_steps/llvm.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-wIqvEX/checkout/src/bootstrap/src/core/build_steps/llvm.rs#L133), bootstrap now strips an extra trailing `bin` component when deriving `llvm_cmake_dir` from a custom `llvm-config` path.
-- In [`src/bootstrap/src/core/builder/tests.rs`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-wIqvEX/checkout/src/bootstrap/src/core/builder/tests.rs#L356), I added a regression case for `/some/prefix/bin/llvm-config` and kept the existing non-`bin` case.
+- In `src/bootstrap/src/core/build_steps/llvm.rs`, bootstrap now strips an extra trailing `bin` component when deriving `llvm_cmake_dir` from a custom `llvm-config` path.
+- In `src/bootstrap/src/core/builder/tests.rs`, I added a regression case for `/some/prefix/bin/llvm-config` and kept the existing non-`bin` case.
 - I also scoped the test to use `RUSTC=rustc` so it runs in this workspace without depending on a missing stage0 bootstrap artifact.
 
 Validation:

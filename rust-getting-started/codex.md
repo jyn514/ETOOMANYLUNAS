@@ -1,6 +1,6 @@
 ❯ I want to maek a PR to rust-lang/rust. What should I do first?
 
-⏺ First: read [`CONTRIBUTING.md`](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-pfO4Ls/checkout/CONTRIBUTING.md) and identify which part of the tree your change touches.
+⏺ First: read `CONTRIBUTING.md` and identify which part of the tree your change touches.
 
 Then, in order:
 1. Confirm the change belongs in this repo, not an external one like Cargo, rustfmt, Clippy, or rust-analyzer.

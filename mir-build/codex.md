@@ -106,7 +106,7 @@
 ```
 
 </details>
-⏺ I added a regression test at [tests/ui/const-generics/mgca/issue-156410.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-tBe4i6/checkout/tests/ui/const-generics/mgca/issue-156410.rs) and reproduced the ICE with the local stage0 compiler.
+⏺ I added a regression test at tests/ui/const-generics/mgca/issue-156410.rs and reproduced the ICE with the local stage0 compiler.
 
 What I observed:
 - The reproducer hits `internal compiler error` in `compiler/rustc_mir_build/src/builder/scope.rs:854` while building MIR for `T::a`.

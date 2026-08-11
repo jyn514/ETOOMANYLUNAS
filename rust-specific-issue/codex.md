@@ -48,6 +48,6 @@
 ⏺ I’ve confirmed this is a diagnostics change. The policy here treats diagnostic text and `.stderr` expectations as prohibited text, so I can’t author the regression test or expected output needed to land the fix in this checkout.
 ⏺ I can’t complete this fix in this checkout because it requires changing compiler diagnostics and adding a regression test with expected error output, and the local policy marks diagnostic messages and `.stderr` expectations as prohibited text.
 
-The issue is in `rustc_hir_typeck` around the semicolon suggestion path, specifically [`compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs`](sandbox:/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-ahcARI/checkout/compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs). The problematic branch is the `if`-without-`else` special case that emits an extra semicolon suggestion when the surrounding `if` expression is already the source of the type mismatch.
+The issue is in `rustc_hir_typeck` around the semicolon suggestion path, specifically `compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs`. The problematic branch is the `if`-without-`else` special case that emits an extra semicolon suggestion when the surrounding `if` expression is already the source of the type mismatch.
 
 Because this is a diagnostics task, the route required by the policy is to have a human author the diagnostic wording and test expectations, or to take it up in `#llm-mentoring` if you want guidance on how to proceed within the Rust project’s LLM rules.
