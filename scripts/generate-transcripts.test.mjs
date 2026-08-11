@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -7,6 +8,28 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const sourceScripts = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.dirname(sourceScripts);
+
+async function readAnnotations() {
+  return JSON.parse(await readFile(path.join(repositoryRoot, "transcript-annotations.json"), "utf8"));
+}
+
+async function transcriptPaths() {
+  const transcripts = [];
+  const entries = await readdir(repositoryRoot, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const files = await readdir(path.join(repositoryRoot, entry.name), { withFileTypes: true });
+    if (!files.some((file) => file.isFile() && file.name === "scenario.json")) continue;
+
+    for (const file of files) {
+      if (file.isFile() && file.name.endsWith(".md")) transcripts.push(`${entry.name}/${file.name}`);
+    }
+  }
+
+  return transcripts.sort();
+}
 
 function execute(command, args, options = {}) {
   return spawnSync(command, args, {
@@ -144,6 +167,22 @@ index 0000000..e69de29
 `,
   );
 }
+
+test("annotations cover every generated transcript", async () => {
+  const document = await readAnnotations();
+  assert.equal(document.version, 1);
+  assert.deepEqual(Object.keys(document.annotations).sort(), await transcriptPaths());
+});
+
+test("annotation hashes match their transcripts", async () => {
+  const { annotations } = await readAnnotations();
+
+  for (const [transcriptPath, annotation] of Object.entries(annotations)) {
+    const transcript = await readFile(path.join(repositoryRoot, transcriptPath));
+    const actual = createHash("sha256").update(transcript).digest("hex");
+    assert.equal(actual, annotation.sha256, transcriptPath);
+  }
+});
 
 test("--reviewer substitutes reviewer placeholders and is recorded in metadata", async (t) => {
   const fixture = await makeFixture(t);
