@@ -3,17 +3,56 @@
 ⏺ I’m checking the issue details and the local area around the affected code first, then I’ll add a regression test and see whether the fix is soundness-sensitive before touching implementation.
 ⏺ WebSearch
 ⏺ I have the symptom: an ICE in MIR/const handling around `UnevaluatedConst`, triggered by `type const` plus `loop_match`/`const_continue`. I’m locating an existing compiletest bucket where that input belongs so I can add a failing regression first.
-⏺ Command(/bin/zsh -lc "rg -n \"UnevaluatedConst|loop_match|const_continue|min_generic_const_args|type const\" tests src/compiler -g '*.rs' -g '*.stderr'")
-⏺ Command(/bin/zsh -lc "rg -n \"const_continue\" tests -g '*.rs' -g '*.stderr'")
-⏺ Command(/bin/zsh -lc "rg -n \"loop_match\" tests -g '*.rs' -g '*.stderr'")
+<details>
+<summary>⏺ Commands (3)</summary>
+
+```console
+/bin/zsh -lc "rg -n \"UnevaluatedConst|loop_match|const_continue|min_generic_const_args|type const\" tests src/compiler -g '*.rs' -g '*.stderr'"
+```
+
+```console
+/bin/zsh -lc "rg -n \"const_continue\" tests -g '*.rs' -g '*.stderr'"
+```
+
+```console
+/bin/zsh -lc "rg -n \"loop_match\" tests -g '*.rs' -g '*.stderr'"
+```
+
+</details>
 ⏺ I’ve narrowed it to the const-generics area rather than the `loop_match` UI tests themselves. Next I’m checking the existing ICE regressions there so I can add a minimal reproducer in the right harness.
-⏺ Command(/bin/zsh -lc "sed -n '1,200p' tests/ui/const-generics/generic_const_exprs/unevaluated-const-ice-119731.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' tests/ui/const-generics/type-const-ice-issue-151631.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' tests/ui/loop-match/no-self-assign-ice.rs")
+<details>
+<summary>⏺ Commands (3)</summary>
+
+```console
+/bin/zsh -lc "sed -n '1,200p' tests/ui/const-generics/generic_const_exprs/unevaluated-const-ice-119731.rs"
+```
+
+```console
+/bin/zsh -lc "sed -n '1,220p' tests/ui/const-generics/type-const-ice-issue-151631.rs"
+```
+
+```console
+/bin/zsh -lc "sed -n '1,220p' tests/ui/loop-match/no-self-assign-ice.rs"
+```
+
+</details>
 ⏺ I’ve confirmed there are existing ICE regressions in `tests/ui/const-generics/`, so I’m following that pattern and checking how the repo records ICEs here before I add the new reproducer.
-⏺ Command(/bin/zsh -lc "sed -n '1,120p' tests/ui/const-generics/generic_const_exprs/unevaluated-const-ice-119731.rs")
-⏺ Command(/bin/zsh -lc "sed -n '1,120p' tests/ui/const-generics/mgca/type-const-ice-issue-151631.rs")
-⏺ Command(/bin/zsh -lc "rg -n \"known-bug|ICE|internal compiler error|ERROR: internal compiler error\" tests/ui/const-generics tests/ui/loop-match tests/ui -g '*.rs'")
+<details>
+<summary>⏺ Commands (3)</summary>
+
+```console
+/bin/zsh -lc "sed -n '1,120p' tests/ui/const-generics/generic_const_exprs/unevaluated-const-ice-119731.rs"
+```
+
+```console
+/bin/zsh -lc "sed -n '1,120p' tests/ui/const-generics/mgca/type-const-ice-issue-151631.rs"
+```
+
+```console
+/bin/zsh -lc "rg -n \"known-bug|ICE|internal compiler error|ERROR: internal compiler error\" tests/ui/const-generics tests/ui/loop-match tests/ui -g '*.rs'"
+```
+
+</details>
 ⏺ I’m adding a minimal regression test under `tests/ui/const-generics/mgca/` that matches the issue’s shape: `type const` in a trait, a `#[loop_match]` loop, and `#[const_continue]` returning the associated const. After that I’ll run just that test and capture the ICE before changing code.
 ⏺ Edit(file)
 ⏺ The regression test is running now. Once it exits, I’ll use the result to classify the affected code path and decide whether the fix is implementation-safe or soundness-sensitive.
@@ -21,16 +60,52 @@
 ⏺ The compiler build is still churning. I haven’t changed implementation yet; I’m waiting for the test run to finish so I can see whether this is a straightforward ICE regression or something deeper in const/type handling.
 ⏺ The build is close to the test phase now. I’m still just observing the failure mode; no code fix has been attempted yet.
 ⏺ The build has reached the later compiler crates. Once the compiletest output lands, I’ll know whether this reproducer is the right one or needs tightening.
-⏺ Command(/bin/zsh -c './x test tests/ui/const-generics/mgca/issue-156410.rs --stage 1')
+<details>
+<summary>⏺ Command</summary>
+
+```console
+/bin/zsh -c './x test tests/ui/const-generics/mgca/issue-156410.rs --stage 1'
+```
+
+</details>
 ⏺ The `x test` run got blocked by an unrelated bootstrap warning in `alloc`, so I’m switching to a narrower direct compiler repro to observe the actual ICE without depending on a full stage1 rebuild.
-⏺ Command(/bin/zsh -c 'ls build/aarch64-apple-darwin/stage0/bin build/aarch64-apple-darwin/stage1/bin 2>/dev/null')
-⏺ Command(/bin/zsh -c 'ls build/aarch64-apple-darwin/stage0/lib/rustlib/aarch64-apple-darwin/bin 2>/dev/null')
-⏺ Command(/bin/zsh -c 'build/aarch64-apple-darwin/stage1/bin/rustc --crate-name issue_156410 --edition=2021 tests/ui/const-generics/mgca/issue-156410.rs -Zunstable-options --crate-type bin -L build/aarch64-apple-darwin/stage1/lib')
+<details>
+<summary>⏺ Commands (3)</summary>
+
+```console
+/bin/zsh -c 'ls build/aarch64-apple-darwin/stage0/bin build/aarch64-apple-darwin/stage1/bin 2>/dev/null'
+```
+
+```console
+/bin/zsh -c 'ls build/aarch64-apple-darwin/stage0/lib/rustlib/aarch64-apple-darwin/bin 2>/dev/null'
+```
+
+```console
+/bin/zsh -c 'build/aarch64-apple-darwin/stage1/bin/rustc --crate-name issue_156410 --edition=2021 tests/ui/const-generics/mgca/issue-156410.rs -Zunstable-options --crate-type bin -L build/aarch64-apple-darwin/stage1/lib'
+```
+
+</details>
 ⏺ The direct stage1 invocation failed because the sysroot is incomplete on this host. I’m checking whether the stage0 toolchain or a bootstrapped sysroot can still run the reproducer locally; if not, I’ll need the exact compiler path from the bootstrap artifacts.
-⏺ Command(/bin/zsh -c "find build/aarch64-apple-darwin/stage0 -maxdepth 3 -type d | sed -n '1,40p'")
-⏺ Command(/bin/zsh -c "find build/aarch64-apple-darwin/stage0/lib/rustlib -maxdepth 2 -type d | sed -n '1,60p'")
-⏺ Command(/bin/zsh -c "find build/aarch64-apple-darwin/stage0/lib/rustlib/aarch64-apple-darwin/lib -maxdepth 1 -type f | sed -n '1,40p'")
-⏺ Command(/bin/zsh -c 'build/aarch64-apple-darwin/stage0/bin/rustc --sysroot build/aarch64-apple-darwin/stage0 --crate-name issue_156410 --edition=2021 tests/ui/const-generics/mgca/issue-156410.rs --crate-type bin')
+<details>
+<summary>⏺ Commands (4)</summary>
+
+```console
+/bin/zsh -c "find build/aarch64-apple-darwin/stage0 -maxdepth 3 -type d | sed -n '1,40p'"
+```
+
+```console
+/bin/zsh -c "find build/aarch64-apple-darwin/stage0/lib/rustlib -maxdepth 2 -type d | sed -n '1,60p'"
+```
+
+```console
+/bin/zsh -c "find build/aarch64-apple-darwin/stage0/lib/rustlib/aarch64-apple-darwin/lib -maxdepth 1 -type f | sed -n '1,40p'"
+```
+
+```console
+/bin/zsh -c 'build/aarch64-apple-darwin/stage0/bin/rustc --sysroot build/aarch64-apple-darwin/stage0 --crate-name issue_156410 --edition=2021 tests/ui/const-generics/mgca/issue-156410.rs --crate-type bin'
+```
+
+</details>
 ⏺ I added a regression test at [tests/ui/const-generics/mgca/issue-156410.rs](/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-tBe4i6/checkout/tests/ui/const-generics/mgca/issue-156410.rs) and reproduced the ICE with the local stage0 compiler.
 
 What I observed:

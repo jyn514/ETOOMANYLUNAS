@@ -18,7 +18,14 @@ This is read-only explanation, no repo changes involved.
 
 ❯ what's going on in https://github.com/rust-lang/rust/issues/155538 ?
 
-⏺ Bash({"command":"gh issue view 155538 --repo rust-lang/rust --comments 2>&1 | head -200","description":"View GitHub issue 155538 with comments"})
+<details>
+<summary>⏺ Command</summary>
+
+```console
+gh issue view 155538 --repo rust-lang/rust --comments 2>&1 | head -200
+```
+
+</details>
 ⏺ ToolSearch({"query":"select:WebFetch","max_results":1})
 ⏺ WebFetch({"url":"https://github.com/rust-lang/rust/issues/155538","prompt":"Summarize this issue: title, description, labels, current status, and key discussion points in comments."})
 ⏺ Issue #155538 — **"Post-mono cycle ICE with dyn and RPIT"**, open.

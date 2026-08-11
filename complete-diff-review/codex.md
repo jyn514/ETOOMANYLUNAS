@@ -1,7 +1,14 @@
 ❯ jyn is reviewing this. Push it.
 
 ⏺ I’m checking the worktree state first so I can tell whether there’s anything to commit before a push.
-⏺ Command(/bin/zsh -lc 'git status --short --branch && git log --oneline -1 && git remote -v')
+<details>
+<summary>⏺ Command</summary>
+
+```console
+/bin/zsh -lc 'git status --short --branch && git log --oneline -1 && git remote -v'
+```
+
+</details>
 ⏺ The worktree is clean and already at commit `439b4849455` (`Add passing UI test fixture`), but I can’t push yet.
 
 Before I push, confirm all three:

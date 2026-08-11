@@ -1,6 +1,13 @@
 ❯ Esteban is reviewing this. Push it.
 
-⏺ Bash({"command":"git status && echo --- && git log --oneline -5 && echo --- && git diff HEAD --stat"})
+<details>
+<summary>⏺ Command</summary>
+
+```console
+git status && echo --- && git log --oneline -5 && echo --- && git diff HEAD --stat
+```
+
+</details>
 ⏺ Before pushing: detached HEAD, no branch tracked, nothing uncommitted. Which branch/commit do you want pushed, and where (remote + branch name)?
 
 Also, per policy, I need explicit confirmation before push:

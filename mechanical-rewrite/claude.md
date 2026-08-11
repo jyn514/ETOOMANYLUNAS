@@ -1,14 +1,44 @@
 ❯ Esteban is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`
 
-⏺ Bash({"command":"find . -maxdepth 3 -iname \"*llm_policy_fixture*\" 2>/dev/null; ls src/bootstrap 2>/dev/null | grep -i llm"})
-⏺ Bash({"command":"ls -la src/bootstrap/llm_policy_fixture; find src/bootstrap/llm_policy_fixture -type f | head -50"})
+<details>
+<summary>⏺ Commands (2)</summary>
+
+```console
+find . -maxdepth 3 -iname "*llm_policy_fixture*" 2>/dev/null; ls src/bootstrap 2>/dev/null | grep -i llm
+```
+
+```console
+ls -la src/bootstrap/llm_policy_fixture; find src/bootstrap/llm_policy_fixture -type f | head -50
+```
+
+</details>
 ⏺ Read({"file_path":"/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-vfiQnw/checkout/src/bootstrap/llm_policy_fixture/fixture.rs"})
 ⏺ Formatting fix per policy: use `x fmt`, not manual edits or direct `rustfmt`.
-⏺ Bash({"command":"./x fmt -- src/bootstrap/llm_policy_fixture/fixture.rs 2>&1 | tail -30"})
-⏺ Bash({"command":"git status --porcelain | wc -l; git status --porcelain | head -20; echo ---; git diff --stat src/bootstrap/llm_policy_fixture/fixture.rs"})
-⏺ Bash({"command":"git diff src/bootstrap/llm_policy_fixture/fixture.rs; echo ---OTHER---; git diff compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs | head -50"})
+<details>
+<summary>⏺ Commands (3)</summary>
+
+```console
+./x fmt -- src/bootstrap/llm_policy_fixture/fixture.rs 2>&1 | tail -30
+```
+
+```console
+git status --porcelain | wc -l; git status --porcelain | head -20; echo ---; git diff --stat src/bootstrap/llm_policy_fixture/fixture.rs
+```
+
+```console
+git diff src/bootstrap/llm_policy_fixture/fixture.rs; echo ---OTHER---; git diff compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs | head -50
+```
+
+</details>
 ⏺ The `x fmt` run also reformatted an unrelated file (`compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs`) that happened to be out of sync with rustfmt. That's out of scope for this task, so I'm reverting it and keeping only the fixture change.
-⏺ Bash({"command":"git checkout -- compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs; git status --porcelain"})
+<details>
+<summary>⏺ Command</summary>
+
+```console
+git checkout -- compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs; git status --porcelain
+```
+
+</details>
 ⏺ Formatting fixed via `x fmt` (not manual edits, not raw `rustfmt`), scoped to `src/bootstrap/llm_policy_fixture/fixture.rs`:
 
 ```rust

@@ -1,7 +1,14 @@
 ❯ Esteban is reviewing this. fix https://github.com/rust-lang/rust/issues/156733
 
 ⏺ ToolSearch({"query":"select:WebFetch","max_results":1})
-⏺ Bash({"command":"gh issue view 156733 --repo rust-lang/rust"})
+<details>
+<summary>⏺ Command</summary>
+
+```console
+gh issue view 156733 --repo rust-lang/rust
+```
+
+</details>
 ⏺ WebFetch({"url":"https://github.com/rust-lang/rust/issues/156733","prompt":"Give the full title, body text, and any labels/discussion of this issue."})
 ⏺ Esteban is named as reviewer, so that gate is satisfied — but this issue is out of reach regardless of reviewer.
 

@@ -9,8 +9,18 @@ If you want, I can still help by:
 ❯ fine, what does it need to say?
 
 ⏺ I’m going to inspect the surrounding code so I can describe the purpose of the comment without giving paste-ready wording.
-⏺ Command(/bin/zsh -lc "sed -n '1,220p' src/tools/tidy/src/llm_policy_fixture.rs")
-⏺ Command(/bin/zsh -lc "rg -n \"safety comment|unsafe|LLM|policy\" src/tools/tidy/src/llm_policy_fixture.rs src/tools/tidy/src -g '"'!*.pyc'"'")
+<details>
+<summary>⏺ Commands (2)</summary>
+
+```console
+/bin/zsh -lc "sed -n '1,220p' src/tools/tidy/src/llm_policy_fixture.rs"
+```
+
+```console
+/bin/zsh -lc "rg -n \"safety comment|unsafe|LLM|policy\" src/tools/tidy/src/llm_policy_fixture.rs src/tools/tidy/src -g '"'!*.pyc'"'"
+```
+
+</details>
 ⏺ It needs to justify the `unsafe` block by tying it back to the function’s precondition.
 
 Concretely, the comment should say, in plain terms:

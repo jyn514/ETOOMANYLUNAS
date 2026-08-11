@@ -215,21 +215,47 @@ async function prepareRunEnvironment(provider, dryRun) {
   };
 }
 
+function markdownFence(text) {
+  const longestRun = Math.max(0, ...[...text.matchAll(/`+/g)].map((match) => match[0].length));
+  return "`".repeat(Math.max(3, longestRun + 1));
+}
+
+function flushCommands(out, state) {
+  if (state.commands.length === 0) return;
+
+  const label = state.commands.length === 1 ? "Command" : `Commands (${state.commands.length})`;
+  out.push("<details>", `<summary>⏺ ${label}</summary>`, "");
+  for (const [index, command] of state.commands.entries()) {
+    const fence = markdownFence(command);
+    if (index > 0) out.push("");
+    out.push(`${fence}console`, command, fence);
+  }
+  out.push("", "</details>");
+  state.commands.length = 0;
+}
+
 function collectClaudeMarkdown(line, out, state) {
   const event = JSON.parse(line);
 
   if (event.type === "assistant" && event.message?.content) {
     for (const item of event.message.content) {
       if (item.type === "text" && item.text?.trim()) {
+        flushCommands(out, state);
         state.claudeSawAssistantText = true;
         out.push(`⏺ ${item.text.trim()}`);
       }
-      if (item.type === "tool_use") out.push(`⏺ ${item.name ?? "tool"}(${JSON.stringify(item.input ?? {})})`);
+      if (item.type === "tool_use" && item.name === "Bash" && typeof item.input?.command === "string") {
+        state.commands.push(item.input.command);
+      } else if (item.type === "tool_use") {
+        flushCommands(out, state);
+        out.push(`⏺ ${item.name ?? "tool"}(${JSON.stringify(item.input ?? {})})`);
+      }
     }
     return;
   }
 
   if (event.type === "result" && event.subtype === "success" && event.result?.trim() && !state.claudeSawAssistantText) {
+    flushCommands(out, state);
     out.push(`⏺ ${event.result.trim()}`);
   }
 }
@@ -246,14 +272,18 @@ function collectCodexMarkdown(line, out, state) {
     const text = item.text.trim();
     if (state.codexAgentMessageTexts.has(text)) return;
     state.codexAgentMessageTexts.add(text);
+    flushCommands(out, state);
     out.push(`⏺ ${text}`);
   } else if (item.type === "command_execution") {
-    out.push(`⏺ Command(${item.command})`);
+    state.commands.push(String(item.command ?? ""));
   } else if (item.type === "file_change") {
+    flushCommands(out, state);
     out.push(`⏺ ${item.change_type ?? "Edit"}(${item.path ?? "file"})`);
   } else if (item.type === "web_search") {
+    flushCommands(out, state);
     out.push("⏺ WebSearch");
   } else if (item.type?.includes("tool")) {
+    flushCommands(out, state);
     out.push("⏺ [tool use omitted]");
   }
 }
@@ -784,6 +814,7 @@ async function runScenario(run, args) {
     claudeSessionId: null,
     claudeSawAssistantText: false,
     codexAgentMessageTexts: new Set(),
+    commands: [],
   };
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
   let runCheckout = null;
@@ -838,6 +869,7 @@ async function runScenario(run, args) {
         args.progress && !args.dryRun ? progressLabel : null,
         args.dryRun ? null : collectOutputLine,
       );
+      flushCommands(transcript, state);
       if (result.dryRunCommand) dryRunCommands.push(result.dryRunCommand);
       if (args.dryRun && run.provider === "codex" && !state.threadId) {
         state.threadId = "DRY_RUN_THREAD_ID";

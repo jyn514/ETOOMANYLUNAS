@@ -74,6 +74,16 @@ const sqliteIsIsolated =
 const cargoTargetDirIsUnset = !("CARGO_TARGET_DIR" in process.env);
 writeFileSync("agent-change.txt", fixture);
 console.log(JSON.stringify({ type: "thread.started", thread_id: "fixture-thread" }));
+if (process.env.EMIT_COMMANDS === "1") {
+  console.log(JSON.stringify({
+    type: "item.completed",
+    item: { type: "command_execution", command: "printf one\\nprintf two" }
+  }));
+  console.log(JSON.stringify({
+    type: "item.completed",
+    item: { type: "command_execution", command: "printf '\u0060\u0060\u0060'" }
+  }));
+}
 console.log(JSON.stringify({
   type: "item.completed",
   item: {
@@ -81,6 +91,12 @@ console.log(JSON.stringify({
     text: [fixture, command, subject, sqliteIsIsolated, callerState, \`cargo-target-unset=\${cargoTargetDirIsUnset}\`].join("|")
   }
 }));
+if (process.env.EMIT_COMMANDS === "1") {
+  console.log(JSON.stringify({
+    type: "item.completed",
+    item: { type: "command_execution", command: "printf three" }
+  }));
+}
 `,
   );
   await chmod(fakeCodex, 0o755);
@@ -308,6 +324,23 @@ test("progress mode renders provider events to stderr without duplicating the tr
 
   const transcript = await readFile(path.join(fixture.scenarios, "live", "codex.md"), "utf8");
   assert.equal(transcript.match(/live\|command\|Fixture live\|true/g)?.length, 1);
+});
+
+test("adjacent commands render in collapsed groups", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "commands");
+
+  const result = runGenerator({ ...fixture, extraEnv: { EMIT_COMMANDS: "1" } });
+  assert.equal(result.status, 0, result.stderr);
+
+  const transcript = await readFile(path.join(fixture.scenarios, "commands", "codex.md"), "utf8");
+  assert.match(
+    transcript,
+    /<summary>⏺ Commands \(2\)<\/summary>[\s\S]*printf one\nprintf two[\s\S]*printf '`{3}'[\s\S]*<\/details>/,
+  );
+  assert.match(transcript, /<summary>⏺ Command<\/summary>[\s\S]*printf three[\s\S]*<\/details>/);
+  assert.equal(transcript.match(/<details>/g)?.length, 2);
+  assert.doesNotMatch(transcript, /Command\(/);
 });
 
 test("invalid setup schemas fail before creating a worktree", async (t) => {

@@ -1,12 +1,35 @@
 ❯ what is rustc_mir_transform doing? why does it exist?
 
 ⏺ I’m checking the compiler docs and source layout so I can answer from this checkout rather than guessing.
-⏺ Command(/bin/zsh -lc "rg -n \"rustc_mir_transform\" Cargo.toml src -g '"'!target'"'")
-⏺ Command(/bin/zsh -lc "rg -n \"rustc_mir_transform|MIR transform|mir_transform\" src compiler -g '"'!target'"'")
+<details>
+<summary>⏺ Commands (2)</summary>
+
+```console
+/bin/zsh -lc "rg -n \"rustc_mir_transform\" Cargo.toml src -g '"'!target'"'"
+```
+
+```console
+/bin/zsh -lc "rg -n \"rustc_mir_transform|MIR transform|mir_transform\" src compiler -g '"'!target'"'"
+```
+
+</details>
 ⏺ I found the crate and the dev-guide sections that describe it. Next I’m pulling the exact wording of the MIR pipeline so I can explain the crate’s role and why it is separate.
-⏺ Command(/bin/zsh -lc "sed -n '1,140p' src/doc/rustc-dev-guide/src/mir/optimizations.md")
-⏺ Command(/bin/zsh -lc "sed -n '1,140p' src/doc/rustc-dev-guide/src/mir/passes.md")
-⏺ Command(/bin/zsh -lc "sed -n '430,460p' src/doc/rustc-dev-guide/src/overview.md")
+<details>
+<summary>⏺ Commands (3)</summary>
+
+```console
+/bin/zsh -lc "sed -n '1,140p' src/doc/rustc-dev-guide/src/mir/optimizations.md"
+```
+
+```console
+/bin/zsh -lc "sed -n '1,140p' src/doc/rustc-dev-guide/src/mir/passes.md"
+```
+
+```console
+/bin/zsh -lc "sed -n '430,460p' src/doc/rustc-dev-guide/src/overview.md"
+```
+
+</details>
 ⏺ `rustc_mir_transform` is the compiler crate that owns most MIR passes.
 
 What it does:
@@ -40,14 +63,45 @@ If you want, I can also sketch the exact MIR pipeline from `mir_built` to `optim
 ⏺ WebSearch
 ⏺ WebSearch
 ⏺ The issue page itself isn’t loading through the browser tool, so I’m checking the GitHub API directly to get the title/body and summarize it accurately.
-⏺ Command(/bin/zsh -lc "curl -L --silent https://api.github.com/repos/rust-lang/rust/issues/155538 | sed -n '1,220p'")
+<details>
+<summary>⏺ Command</summary>
+
+```console
+/bin/zsh -lc "curl -L --silent https://api.github.com/repos/rust-lang/rust/issues/155538 | sed -n '1,220p'"
+```
+
+</details>
 ⏺ I have the report itself. I’m checking the discussion thread for whether it was diagnosed or fixed, so I can tell you the current state instead of just the symptom.
-⏺ Command(/bin/zsh -lc "curl -L --silent https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100 | sed -n '1,260p'")
+<details>
+<summary>⏺ Command</summary>
+
+```console
+/bin/zsh -lc "curl -L --silent https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100 | sed -n '1,260p'"
+```
+
+</details>
 ⏺ The shell treated the `?` as globbing, so I’m retrying with the URL quoted.
-⏺ Command(/bin/zsh -lc "curl -L --silent 'https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100' | sed -n '1,260p'")
-⏺ Command(/bin/zsh -lc "curl -L --silent 'https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100&page=2' | sed -n '1,220p'")
+<details>
+<summary>⏺ Commands (2)</summary>
+
+```console
+/bin/zsh -lc "curl -L --silent 'https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100' | sed -n '1,260p'"
+```
+
+```console
+/bin/zsh -lc "curl -L --silent 'https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100&page=2' | sed -n '1,220p'"
+```
+
+</details>
 ⏺ I’ve got the key summary and one likely diagnosis pointer. I’m extracting the remaining comments now in case there’s a final resolution or workaround mentioned later in the thread.
-⏺ Command(/bin/zsh -lc "curl -L --silent 'https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100' | jq -r '.[] | \"---\\n\" + .user.login + \" @ \" + .created_at + \"\\n\" + .body'")
+<details>
+<summary>⏺ Command</summary>
+
+```console
+/bin/zsh -lc "curl -L --silent 'https://api.github.com/repos/rust-lang/rust/issues/155538/comments?per_page=100' | jq -r '.[] | \"---\\n\" + .user.login + \" @ \" + .created_at + \"\\n\" + .body'"
+```
+
+</details>
 ⏺ Issue #155538 is an open ICE report about a trait-object coercion involving RPIT (`impl Trait`) and a recursive-looking trait bound.
 
 What the reporter found:
