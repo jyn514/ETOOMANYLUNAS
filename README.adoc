@@ -1,0 +1,89 @@
+= README
+
+Test `rust-AGENTS.md` to see how effective it is.
+
+All files named `claude.md` collected using Sonnet 4.6 with medium effort.
+Codex transcripts use `gpt-5.4-mini`.
+`❯` indicates that this is a user prompt.
+`## suggested` indicates that I did not write the prompt myself and just hit right arrow to accept a suggestion.
+
+[cols="1,1,1", options="header"]
+|===
+|Transcript |Claude Sonnet 4.6 (medium effort) | Codex gpt-5.4-mini (medium effort)
+
+|agent-document-exemption
+|link:agent-document-exemption/claude.md[claude.md]
+|link:agent-document-exemption/codex.md[codex.md]
+
+|clippy-specific-issue
+|link:clippy-specific-issue/claude.md[claude.md]
+|link:clippy-specific-issue/codex.md[codex.md]
+
+|complete-diff-review
+|link:complete-diff-review/claude.md[claude.md]
+|link:complete-diff-review/codex.md[codex.md]
+
+|conceptual-outline
+|link:conceptual-outline/claude.md[claude.md]
+|link:conceptual-outline/codex.md[codex.md]
+
+|disclosure-quality
+|link:disclosure-quality/claude.md[claude.md]
+|link:disclosure-quality/codex.md[codex.md]
+
+|doc-comment
+|link:doc-comment/claude.md[claude.md]
+|link:doc-comment/codex.md[codex.md]
+
+|explain
+|link:explain/claude.md[claude.md]
+|link:explain/codex.md[codex.md]
+
+|happy-path
+|link:happy-path/claude.md[claude.md]
+|link:happy-path/codex.md[codex.md]
+
+|mechanical-rewrite
+|link:mechanical-rewrite/claude.md[claude.md]
+|link:mechanical-rewrite/codex.md[codex.md]
+
+|mir-build
+|link:mir-build/claude.md[claude.md]
+|link:mir-build/codex.md[codex.md]
+
+|no-test-suite
+|link:no-test-suite/claude.md[claude.md]
+|link:no-test-suite/codex.md[codex.md]
+
+|pr-description
+|link:pr-description/claude.md[claude.md]
+|link:pr-description/codex.md[codex.md]
+
+|pre-push-check
+|link:pre-push-check/claude.md[claude.md]
+|link:pre-push-check/codex.md[codex.md]
+
+|rust-getting-started
+|link:rust-getting-started/claude.md[claude.md]
+|link:rust-getting-started/codex.md[codex.md]
+
+|rust-specific-issue
+|link:rust-specific-issue/claude.md[claude.md]
+|link:rust-specific-issue/codex.md[codex.md]
+
+|self-reviewer
+|link:self-reviewer/claude.md[claude.md]
+|link:self-reviewer/codex.md[codex.md]
+
+|solicited
+|link:solicited/claude.md[claude.md]
+|link:solicited/codex.md[codex.md]
+
+|test-only
+|link:test-only/claude.md[claude.md]
+|link:test-only/codex.md[codex.md]
+
+|uncertain-soundness
+|link:uncertain-soundness/claude.md[claude.md]
+|link:uncertain-soundness/codex.md[codex.md]
+|===
