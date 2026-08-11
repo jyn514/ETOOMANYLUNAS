@@ -1,3 +1,4 @@
+
 ❯ Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`.
 
 ⏺ This is blocked by the repo policy: a safety comment is non-trivial source comment text, which is a prohibited text category. I can’t author or rewrite it here.
@@ -9,6 +10,7 @@ If you want, I can still help by:
 ❯ fine, what does it need to say?
 
 ⏺ I’m going to inspect the surrounding code so I can describe the purpose of the comment without giving paste-ready wording.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -21,6 +23,7 @@ If you want, I can still help by:
 ```
 
 </details>
+
 ⏺ It needs to justify the `unsafe` block by tying it back to the function’s precondition.
 
 Concretely, the comment should say, in plain terms:

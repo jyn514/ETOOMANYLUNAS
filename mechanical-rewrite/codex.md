@@ -1,6 +1,8 @@
+
 ❯ jyn is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`
 
 ⏺ I’m checking the local instructions and the fixture layout first, then I’ll apply the smallest formatting-only change that matches the repo’s formatter rules.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -13,7 +15,9 @@
 ```
 
 </details>
+
 ⏺ I found the target file. Next I’m inspecting the current formatting so I can decide whether this is a pure mechanical rewrite and whether an existing formatter should handle it.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -26,9 +30,13 @@
 ```
 
 </details>
+
 ⏺ This is a straight formatting fix, so I’m using the repo formatter rather than hand-editing the file. After that I’ll verify the diff is only whitespace/formatting.
+
 ⏺ The formatter is still running and bootstrapping tools. I’m waiting for it to finish before checking the result.
+
 ⏺ Formatter is still building its bootstrap dependencies. Once it exits I’ll confirm the file was normalized and nothing else changed.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -37,7 +45,9 @@
 ```
 
 </details>
+
 ⏺ `x fmt` rejected file arguments, so I’m rerunning it in the repo-supported `--all` mode. That should still apply the formatting-only rewrite without touching semantics.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -46,8 +56,11 @@
 ```
 
 </details>
+
 ⏺ The formatter is now running in the supported mode. I’m waiting for completion, then I’ll inspect the exact diff.
+
 ⏺ Formatting completed successfully. I’m checking the diff now so I can confirm it stayed scoped to the requested fixture file.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -60,6 +73,7 @@
 ```
 
 </details>
+
 ⏺ Formatted `src/bootstrap/llm_policy_fixture/fixture.rs`.
 
 Also note `x fmt --all` touched one unrelated file: `compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs`. I left it alone.

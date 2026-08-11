@@ -1,6 +1,8 @@
+
 ❯ jyn is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries.
 
 ⏺ I’m checking the rustc LLVM build path and the existing test coverage first so I can add a regression test before touching implementation.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -13,7 +15,9 @@
 ```
 
 </details>
+
 ⏺ I found the `rustc_llvm` build script and the bootstrap tests that already exercise `llvm-config` handling. Next I’m checking whether there’s an existing assertion I can extend rather than inventing new test plumbing.
+
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -30,7 +34,9 @@
 ```
 
 </details>
+
 ⏺ The likely fix is in `compiler/rustc_llvm/build.rs`, and there are already unit tests in that crate. I’m narrowing down where `llvm-config` arguments are assembled so I can add a focused failing test around the new `--ignore-libllvm` flag.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -43,7 +49,9 @@
 ```
 
 </details>
+
 ⏺ I hit a small search typo, but the implementation path is clear: `rustc_llvm/build.rs` builds the `llvm-config --libs` command inline, so I’m looking for a test hook or existing build-script tests at the bottom of that file before I edit anything.
+
 <details>
 <summary>⏺ Commands (4)</summary>
 
@@ -64,6 +72,7 @@
 ```
 
 </details>
+
 ⏺ I found the code path in `compiler/rustc_llvm/build.rs`, but there isn’t an existing test hook that can observe the exact `llvm-config --libs` invocation without first restructuring the build script.
 
 Per the repo policy, that makes this a test-suite design decision, so I need you to choose one:

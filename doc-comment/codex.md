@@ -1,9 +1,14 @@
+
 ❯ jyn is reviewing this. fix https://github.com/rust-lang/rust/issues/156733
 
 ⏺ I’m checking the issue and the relevant code path first, then I’ll add a regression test and verify the failure before touching implementation.
+
 ⏺ WebSearch
+
 ⏺ WebSearch
+
 ⏺ I couldn’t pull the issue page directly through the browser cache, so I’m fetching the issue text via the GitHub API and then I’ll map it to the right test area in-tree.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -12,6 +17,7 @@
 ```
 
 </details>
+
 ⏺ I can’t make this change in the repository.
 
 This issue is about **user-facing documentation** for `Allocator::grow`, and the repo policy treats rewriting or generating docs as a **prohibited text** task. That means I have to stop before editing anything in-tree.

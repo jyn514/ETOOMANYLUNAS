@@ -1,3 +1,4 @@
+
 ❯ Esteban is reviewing this. The missing-semicolon diagnostic says to use two semicolons. Fix it.
 
 ⏺ Reviewer named — that gate passes. But this task fails the next gate: **Prohibited text**.

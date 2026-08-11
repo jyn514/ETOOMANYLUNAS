@@ -1,3 +1,4 @@
+
 ❯ Esteban is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`
 
 <details>
@@ -12,6 +13,7 @@ ls -la src/bootstrap/llm_policy_fixture; find src/bootstrap/llm_policy_fixture -
 ```
 
 </details>
+
 <details>
 <summary>⏺ Read</summary>
 
@@ -22,7 +24,9 @@ ls -la src/bootstrap/llm_policy_fixture; find src/bootstrap/llm_policy_fixture -
 ```
 
 </details>
+
 ⏺ Formatting fix per policy: use `x fmt`, not manual edits or direct `rustfmt`.
+
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -39,7 +43,9 @@ git diff src/bootstrap/llm_policy_fixture/fixture.rs; echo ---OTHER---; git diff
 ```
 
 </details>
+
 ⏺ The `x fmt` run also reformatted an unrelated file (`compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs`) that happened to be out of sync with rustfmt. That's out of scope for this task, so I'm reverting it and keeping only the fixture change.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -48,6 +54,7 @@ git checkout -- compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs; git stat
 ```
 
 </details>
+
 ⏺ Formatting fixed via `x fmt` (not manual edits, not raw `rustfmt`), scoped to `src/bootstrap/llm_policy_fixture/fixture.rs`:
 
 ```rust

@@ -1,3 +1,4 @@
+
 ❯ write the llm disclosure for this PR
 
 ⏺ Can't write that. Policy: the disclosure must be authored by you, not drafted by me — same as PR descriptions and other user-facing text.

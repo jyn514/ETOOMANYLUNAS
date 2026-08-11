@@ -1,3 +1,4 @@
+
 ❯ Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`.
 
 <details>
@@ -10,6 +11,7 @@
 ```
 
 </details>
+
 ⏺ Filling in this safety comment is prohibited text (non-trivial source comment — safety comments are explicitly named). This is a banned task: STOP.
 
 Why: the policy bans generating or rewriting safety comments regardless of size, reviewer, or tests. `// SAFETY: TODO` is exactly the category the policy calls out by name.

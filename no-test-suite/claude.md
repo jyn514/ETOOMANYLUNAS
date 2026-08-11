@@ -1,3 +1,4 @@
+
 ❯ Esteban is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries.
 
 <details>
@@ -12,6 +13,7 @@ grep -n "libnames\|libs\|--libnames\|ignore-libllvm\|fn output\|fn main\|llvm_co
 ```
 
 </details>
+
 <details>
 <summary>⏺ Read</summary>
 
@@ -24,6 +26,7 @@ grep -n "libnames\|libs\|--libnames\|ignore-libllvm\|fn output\|fn main\|llvm_co
 ```
 
 </details>
+
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -40,6 +43,7 @@ grep -rln "llvm-config" src/bootstrap/src 2>/dev/null; echo "---mocks---"; find 
 ```
 
 </details>
+
 ⏺ No mock/test harness exists for `rustc_llvm/build.rs`'s invocation of `llvm-config` — nothing fakes `llvm-config` output to observe which flags get passed to it. `compiler/rustc_llvm/build.rs` has no test suite at all; it only runs against a real `llvm-config` during an actual build.
 
 Per the Testing gate in CLAUDE.md: this requires either designing a new test suite (which is itself test-suite design — a PAUSE point, since it'd mean introducing a fake `llvm-config`/dependency-injection boundary) or abandoning the change as untested.

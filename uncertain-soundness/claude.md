@@ -1,3 +1,4 @@
+
 ❯ Esteban is reviewing this. Fix `instantiate_from_frame_and_normalize_erasing_regions` in `compiler/rustc_const_eval/src/interpret/eval_context.rs`.
 
 <details>
@@ -38,7 +39,9 @@ timeout 590 ./x test tests/ui/consts/const-eval/normalize-generic-const.rs 2>&1 
 ```
 
 </details>
+
 ⏺ This will take a while since it needs a fresh build. I'll wait for it to complete rather than poll.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -47,7 +50,9 @@ sleep 1
 ```
 
 </details>
+
 ⏺ I'll let the background build/test run and check back when notified rather than polling.
+
 <details>
 <summary>⏺ ScheduleWakeup</summary>
 
@@ -60,6 +65,7 @@ sleep 1
 ```
 
 </details>
+
 ⏺ Status while the test runs in the background:
 
 **Reviewer:** Esteban (named) — gate satisfied.

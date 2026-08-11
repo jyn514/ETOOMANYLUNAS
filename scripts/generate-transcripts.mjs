@@ -222,7 +222,18 @@ function markdownFence(text) {
 
 function renderDetails(out, label, language, body) {
   const fence = markdownFence(body);
-  out.push("<details>", `<summary>⏺ ${label}</summary>`, "", `${fence}${language}`, body, fence, "", "</details>");
+  if (out.at(-1) !== "") out.push("");
+  out.push(
+    "<details>",
+    `<summary>⏺ ${label}</summary>`,
+    "",
+    `${fence}${language}`,
+    body,
+    fence,
+    "",
+    "</details>",
+    "",
+  );
 }
 
 function stripLocalLinkTargets(text) {
@@ -232,17 +243,23 @@ function stripLocalLinkTargets(text) {
   );
 }
 
+function pushEvent(out, text) {
+  if (out.at(-1) !== "") out.push("");
+  out.push(text, "");
+}
+
 function flushCommands(out, state) {
   if (state.commands.length === 0) return;
 
   const label = state.commands.length === 1 ? "Command" : `Commands (${state.commands.length})`;
+  if (out.at(-1) !== "") out.push("");
   out.push("<details>", `<summary>⏺ ${label}</summary>`, "");
   for (const [index, command] of state.commands.entries()) {
     const fence = markdownFence(command);
     if (index > 0) out.push("");
     out.push(`${fence}console`, command, fence);
   }
-  out.push("", "</details>");
+  out.push("", "</details>", "");
   state.commands.length = 0;
 }
 
@@ -254,7 +271,7 @@ function collectClaudeMarkdown(line, out, state) {
       if (item.type === "text" && item.text?.trim()) {
         flushCommands(out, state);
         state.claudeSawAssistantText = true;
-        out.push(`⏺ ${stripLocalLinkTargets(item.text.trim())}`);
+        pushEvent(out, `⏺ ${stripLocalLinkTargets(item.text.trim())}`);
       }
       if (item.type === "tool_use" && item.name === "Bash" && typeof item.input?.command === "string") {
         state.commands.push(item.input.command);
@@ -268,7 +285,7 @@ function collectClaudeMarkdown(line, out, state) {
 
   if (event.type === "result" && event.subtype === "success" && event.result?.trim() && !state.claudeSawAssistantText) {
     flushCommands(out, state);
-    out.push(`⏺ ${stripLocalLinkTargets(event.result.trim())}`);
+    pushEvent(out, `⏺ ${stripLocalLinkTargets(event.result.trim())}`);
   }
 }
 
@@ -285,18 +302,18 @@ function collectCodexMarkdown(line, out, state) {
     if (state.codexAgentMessageTexts.has(text)) return;
     state.codexAgentMessageTexts.add(text);
     flushCommands(out, state);
-    out.push(`⏺ ${text}`);
+    pushEvent(out, `⏺ ${text}`);
   } else if (item.type === "command_execution") {
     state.commands.push(String(item.command ?? ""));
   } else if (item.type === "file_change") {
     flushCommands(out, state);
-    out.push(`⏺ ${item.change_type ?? "Edit"}(${item.path ?? "file"})`);
+    pushEvent(out, `⏺ ${item.change_type ?? "Edit"}(${item.path ?? "file"})`);
   } else if (item.type === "web_search") {
     flushCommands(out, state);
-    out.push("⏺ WebSearch");
+    pushEvent(out, "⏺ WebSearch");
   } else if (item.type?.includes("tool")) {
     flushCommands(out, state);
-    out.push("⏺ [tool use omitted]");
+    pushEvent(out, "⏺ [tool use omitted]");
   }
 }
 

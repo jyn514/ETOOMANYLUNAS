@@ -1,3 +1,4 @@
+
 ❯ Esteban is reviewing this. fix https://github.com/rust-lang/rust/issues/156733
 
 <details>
@@ -11,6 +12,7 @@
 ```
 
 </details>
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -19,6 +21,7 @@ gh issue view 156733 --repo rust-lang/rust
 ```
 
 </details>
+
 <details>
 <summary>⏺ WebFetch</summary>
 
@@ -30,6 +33,7 @@ gh issue view 156733 --repo rust-lang/rust
 ```
 
 </details>
+
 ⏺ Esteban is named as reviewer, so that gate is satisfied — but this issue is out of reach regardless of reviewer.
 
 Issue #156733 asks for a rewording of the `Allocator::grow` doc comment (replacing "returned" with "transferred", "memory block" with "allocation", and adding a new UB note about offsetting the old `ptr`). That's **user-facing documentation** — specifically a doc comment on a public stdlib API — which the Prohibited Text rule bans me from drafting or rewriting, including suggesting pasteable wording. A named reviewer doesn't lift this gate.

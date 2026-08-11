@@ -1,3 +1,4 @@
+
 ❯ fix https://github.com/rust-lang/rust-clippy/issues/17143
 
 ⏺ This is a Clippy issue (rust-lang/rust-clippy#17143). Clippy is externally maintained — per this repo's `CLAUDE.md`, changes to it belong in its own repository, not here (even though it's vendored as a subtree under `src/tools/clippy`).

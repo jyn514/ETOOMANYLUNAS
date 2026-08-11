@@ -1,3 +1,4 @@
+
 ❯ Esteban is reviewing this. Add a regression test for bootstrap rejecting `--nocapture`, but don't fix it yet.
 
 <details>
@@ -12,6 +13,7 @@ grep -rn "nocapture" src/bootstrap/src 2>/dev/null
 ```
 
 </details>
+
 <details>
 <summary>⏺ Read</summary>
 
@@ -24,6 +26,7 @@ grep -rn "nocapture" src/bootstrap/src 2>/dev/null
 ```
 
 </details>
+
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -40,6 +43,7 @@ grep -n "fn \|Flags::parse\|nocapture\|no_capture" src/bootstrap/src/core/config
 ```
 
 </details>
+
 <details>
 <summary>⏺ Read</summary>
 
@@ -51,6 +55,7 @@ grep -n "fn \|Flags::parse\|nocapture\|no_capture" src/bootstrap/src/core/config
 ```
 
 </details>
+
 <details>
 <summary>⏺ Read</summary>
 
@@ -63,6 +68,7 @@ grep -n "fn \|Flags::parse\|nocapture\|no_capture" src/bootstrap/src/core/config
 ```
 
 </details>
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -71,6 +77,7 @@ grep -n "fn normalize_args" -A 20 src/bootstrap/src/core/config/flags.rs | head 
 ```
 
 </details>
+
 <details>
 <summary>⏺ Edit</summary>
 
@@ -84,6 +91,7 @@ grep -n "fn normalize_args" -A 20 src/bootstrap/src/core/config/flags.rs | head 
 ```
 
 </details>
+
 <details>
 <summary>⏺ Edit</summary>
 
@@ -97,7 +105,9 @@ grep -n "fn normalize_args" -A 20 src/bootstrap/src/core/config/flags.rs | head 
 ```
 
 </details>
+
 ⏺ Now run the test and observe the expected failure.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -106,6 +116,7 @@ cd /private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-
 ```
 
 </details>
+
 ⏺ The regression test compiled and ran, and failed as expected — `--nocapture` currently parses successfully via the clap `alias = "nocapture"` on `no_capture` in `src/bootstrap/src/core/config/flags.rs:425`, instead of being rejected.
 
 Test added: `nocapture_is_rejected` in `src/bootstrap/src/core/config/tests.rs:67-72`, asserting `Flags::try_parse_from(["x.py", "test", "--nocapture"])` is an `Err`. Confirmed failing via `cargo test --lib nocapture_is_rejected`.
@@ -115,6 +126,7 @@ Classification: this is CLI-argument-parsing/config plumbing in bootstrap, not c
 ❯ ok now fix it
 
 ⏺ Removing the `alias = "nocapture"` on the `no_capture` flag so `--nocapture` is rejected, per the classification already stated (not soundness-sensitive, reviewer Esteban already named).
+
 <details>
 <summary>⏺ Edit</summary>
 
@@ -128,7 +140,9 @@ Classification: this is CLI-argument-parsing/config plumbing in bootstrap, not c
 ```
 
 </details>
+
 ⏺ Confirming the regression test now passes.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -137,9 +151,11 @@ cd /private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-
 ```
 
 </details>
+
 ⏺ Passes now.
 
 Also running the broader config test suite to catch any fallout (e.g. other tests relying on the alias).
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -148,7 +164,9 @@ cargo test --lib core::config:: 2>&1 | tail -30
 ```
 
 </details>
+
 ⏺ Pre-existing environment gap, not caused by this change — missing stage0 rustc in this checkout. Confirming `clap_verify` and `nocapture_is_rejected` both still pass on their own.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -161,6 +179,7 @@ cargo test --lib -- clap_verify nocapture_is_rejected 2>&1 | tail -15
 ```
 
 </details>
+
 ⏺ Both green. Fix applied:
 
 - `src/bootstrap/src/core/config/flags.rs:425` — dropped `alias = "nocapture"` from the `no_capture` arg. `--nocapture` now fails to parse; only `--no-capture` is accepted.

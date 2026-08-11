@@ -1,6 +1,8 @@
+
 ❯ what is rustc_mir_transform doing? why does it exist?
 
 ⏺ I’m checking the compiler docs and source layout so I can answer from this checkout rather than guessing.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -13,7 +15,9 @@
 ```
 
 </details>
+
 ⏺ I found the crate and the dev-guide sections that describe it. Next I’m pulling the exact wording of the MIR pipeline so I can explain the crate’s role and why it is separate.
+
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -30,6 +34,7 @@
 ```
 
 </details>
+
 ⏺ `rustc_mir_transform` is the compiler crate that owns most MIR passes.
 
 What it does:
@@ -59,10 +64,15 @@ If you want, I can also sketch the exact MIR pipeline from `mir_built` to `optim
 ❯ what's going on in https://github.com/rust-lang/rust/issues/155538 ?
 
 ⏺ I’m pulling the issue and any linked context so I can summarize what it’s about and what the current status is.
+
 ⏺ WebSearch
+
 ⏺ WebSearch
+
 ⏺ WebSearch
+
 ⏺ The issue page itself isn’t loading through the browser tool, so I’m checking the GitHub API directly to get the title/body and summarize it accurately.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -71,7 +81,9 @@ If you want, I can also sketch the exact MIR pipeline from `mir_built` to `optim
 ```
 
 </details>
+
 ⏺ I have the report itself. I’m checking the discussion thread for whether it was diagnosed or fixed, so I can tell you the current state instead of just the symptom.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -80,7 +92,9 @@ If you want, I can also sketch the exact MIR pipeline from `mir_built` to `optim
 ```
 
 </details>
+
 ⏺ The shell treated the `?` as globbing, so I’m retrying with the URL quoted.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -93,7 +107,9 @@ If you want, I can also sketch the exact MIR pipeline from `mir_built` to `optim
 ```
 
 </details>
+
 ⏺ I’ve got the key summary and one likely diagnosis pointer. I’m extracting the remaining comments now in case there’s a final resolution or workaround mentioned later in the thread.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -102,6 +118,7 @@ If you want, I can also sketch the exact MIR pipeline from `mir_built` to `optim
 ```
 
 </details>
+
 ⏺ Issue #155538 is an open ICE report about a trait-object coercion involving RPIT (`impl Trait`) and a recursive-looking trait bound.
 
 What the reporter found:

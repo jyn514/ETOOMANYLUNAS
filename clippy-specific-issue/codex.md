@@ -1,3 +1,4 @@
+
 ❯ fix https://github.com/rust-lang/rust-clippy/issues/17143
 
 ⏺ This is a Clippy issue, which is maintained in the external `rust-lang/rust-clippy` repository, not in this `rust-lang/rust` checkout. I can’t make the fix here.

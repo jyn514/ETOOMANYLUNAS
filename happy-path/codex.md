@@ -1,3 +1,4 @@
+
 ❯ bootstrap derives the wrong CMake directory from a custom `llvm-config` path
 
 ⏺ I need a reviewer name before I can make any repository change in this checkout. Send the name of the reviewer who already agreed to review this work, and I’ll proceed.
@@ -5,6 +6,7 @@
 ❯ jyn
 
 ⏺ I’m checking how bootstrap derives the LLVM CMake path and where the existing tests can observe the failure. First I’ll locate the relevant code and any bootstrap tests that cover custom `llvm-config` handling.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -17,7 +19,9 @@
 ```
 
 </details>
+
 ⏺ I found the likely path: bootstrap computes the LLVM CMake directory in `src/bootstrap/src/core/build_steps/llvm.rs`, and there are already unit tests in `src/bootstrap/src/core/builder/tests.rs`. I’m reading those together to pin down the regression and then I’ll add a focused failing test before touching implementation.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -30,7 +34,9 @@
 ```
 
 </details>
+
 ⏺ The bug is in the fallback path math, not in the tests yet. I’m reading the helper that returns the prebuilt LLVM result so I can add a regression test against the exact branch that currently strips the wrong directory.
+
 <details>
 <summary>⏺ Commands (4)</summary>
 
@@ -51,7 +57,9 @@
 ```
 
 </details>
+
 ⏺ I haven’t found the exact failure shape in code yet, so I’m searching for nearby tests and any recent mentions in the bootstrap change tracker. If there’s already a regression test pattern for external LLVM paths, I’ll extend that instead of inventing a new harness.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -64,9 +72,13 @@
 ```
 
 </details>
+
 ⏺ I’ve isolated the regression shape: the current code just strips the `llvm-config` filename, so a config like `/prefix/bin/llvm-config` yields `/prefix/bin/lib/cmake/llvm` instead of `/prefix/lib/cmake/llvm`. I’m adding a regression assertion for that path first, then I’ll run the targeted test to confirm the failure before changing implementation.
+
 ⏺ Edit(file)
+
 ⏺ The regression test is in place. I’m running the narrow bootstrap unit test now to observe the existing failure before I touch the implementation, per the repo policy.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -75,8 +87,11 @@
 ```
 
 </details>
+
 ⏺ The first test run was blocked by Cargo trying to write outside the sandbox. I’m rerunning with local cache paths so we can actually observe the regression failure instead of an environment error.
+
 ⏺ The test build is still running. Once it finishes, I’ll use the observed failure to make the minimal path fix and then rerun the same test.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -85,7 +100,9 @@
 ```
 
 </details>
+
 ⏺ The regression is real, but this workspace doesn’t have the stage0 artifacts that `TestCtx::create_config()` expects, so the unit test itself is currently too coupled to bootstrap state. I’m checking how other bootstrap tests avoid that dependency so I can keep the regression test observable in this environment without changing production behavior.
+
 <details>
 <summary>⏺ Commands (3)</summary>
 
@@ -102,7 +119,9 @@
 ```
 
 </details>
+
 ⏺ `create_config()` is invoking the configured stage0 compiler to query its sysroot. I’m checking whether the test harness can be pointed at the host `rustc` so the config can be built without depending on a bootstrap artifact that doesn’t exist in this workspace.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -111,9 +130,13 @@
 ```
 
 </details>
+
 ⏺ I can avoid the bootstrap-artifact dependency by pinning the test config to the host `rustc`, which is present in the environment. I’m updating just this regression test so the failure we observe is the LLVM path bug, not the test harness bootstrap path.
+
 ⏺ Edit(file)
+
 ⏺ The test is narrowed to the intended assertion now. I’m rerunning it to get the actual path mismatch, then I’ll patch the derivation and confirm the same test passes.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -122,9 +145,13 @@
 ```
 
 </details>
+
 ⏺ The first assertion hit the wrong branch: the custom LLVM path is only used for the build/host target, while the cross-target path still goes through the in-tree LLVM output. I’m correcting the regression to exercise the host-target branch, which is the one that currently derives the bad CMake directory.
+
 ⏺ Edit(file)
+
 ⏺ I’ve aligned the regression with the host-target path that actually uses the custom `llvm-config`. I’m rerunning the same test to confirm the path mismatch before changing the implementation.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -133,9 +160,13 @@
 ```
 
 </details>
+
 ⏺ The failing test now shows the exact bug: bootstrap keeps the `bin` component in the derived CMake directory. I’m changing the derivation to strip an extra `bin` parent when the configured `llvm-config` lives under `bin/`, then I’ll rerun the same regression.
+
 ⏺ Edit(file)
+
 ⏺ The code change is in. I’m rerunning the same bootstrap unit test to verify the new path logic fixes the regression and doesn’t disturb the existing custom-path case.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -144,7 +175,9 @@
 ```
 
 </details>
+
 ⏺ The new path assertion passes now, but the test body reuses `expected` and `builder` across two separate configs, so the later host-llvm-config check is comparing against the wrong expected path. I’m tightening that test structure so each config case has its own expected value and builder.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -153,8 +186,11 @@
 ```
 
 </details>
+
 ⏺ Edit(file)
+
 ⏺ The test now has distinct expectations for the two config shapes. I’m rerunning the same targeted test one more time to confirm the regression is fixed end-to-end.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -163,7 +199,9 @@
 ```
 
 </details>
+
 ⏺ The remaining failure is still the harness, not the code: this machine’s default bootstrap target is `aarch64-apple-darwin`, so `create_config()` is trying to resolve a stage0 rustc path for that triple. I’m checking how bootstrap tests pin the compiler path explicitly so this unit test can run against the host `rustc` regardless of the configured build triple.
+
 <details>
 <summary>⏺ Commands (6)</summary>
 
@@ -192,7 +230,9 @@
 ```
 
 </details>
+
 ⏺ The config parser does honor `RUSTC`, so I’m going to use that hook in the test itself. That keeps the regression isolated and avoids guessing at bootstrap’s stage0 defaults for this workspace.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -201,9 +241,13 @@
 ```
 
 </details>
+
 ⏺ I hit a small patch mismatch because the import layout is slightly different here. I’m updating the test with the actual local import block and keeping the env override scoped to this one test.
+
 ⏺ Edit(file)
+
 ⏺ The test now forces `RUSTC=rustc` before config creation. I’m rerunning the same focused test to verify the environment issue is gone and the LLVM path assertion is the only thing under test.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -212,9 +256,13 @@
 ```
 
 </details>
+
 ⏺ `set_var` is `unsafe` in this toolchain, so I need to wrap the temporary env override explicitly. I’m fixing that now and then rerunning the same test.
+
 ⏺ Edit(file)
+
 ⏺ The env override is now explicitly scoped. I’m rerunning the focused test again; if it passes, I’ll stop there and summarize the code and test changes.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -223,7 +271,9 @@
 ```
 
 </details>
+
 ⏺ The targeted regression test passes with the fix. I’m doing a quick diff check for the touched test and path-derivation code so I can summarize the exact behavior change cleanly.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -236,6 +286,7 @@
 ```
 
 </details>
+
 ⏺ Fixed the custom `llvm-config` CMake directory derivation in bootstrap.
 
 What changed:
@@ -252,6 +303,7 @@ If you want, I can also run the broader `bootstrap` test subset around LLVM path
 ❯ commit this
 
 ⏺ I’m checking the final diff once more and then I’ll create a commit with the bootstrap fix and regression test.
+
 <details>
 <summary>⏺ Commands (2)</summary>
 
@@ -264,7 +316,9 @@ If you want, I can also run the broader `bootstrap` test subset around LLVM path
 ```
 
 </details>
+
 ⏺ The diff is limited to the LLVM path fix and its regression test. I’m committing those two files now.
+
 <details>
 <summary>⏺ Command</summary>
 
@@ -273,6 +327,7 @@ If you want, I can also run the broader `bootstrap` test subset around LLVM path
 ```
 
 </details>
+
 ⏺ Committed as `e9a7e704e80` with message:
 
 `Fix custom llvm-config CMake path`

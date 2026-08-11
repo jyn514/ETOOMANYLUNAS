@@ -349,6 +349,8 @@ test("adjacent commands render in collapsed groups", async (t) => {
   );
   assert.match(transcript, /<summary>⏺ Command<\/summary>[\s\S]*printf three[\s\S]*<\/details>/);
   assert.equal(transcript.match(/<details>/g)?.length, 2);
+  assert.equal(transcript.match(/\n\n<details>/g)?.length, 2);
+  assert.equal(transcript.match(/<\/details>\n(?:\n|$)/g)?.length, 2);
   assert.doesNotMatch(transcript, /Command\(/);
 });
 
@@ -361,6 +363,7 @@ test("temporary checkout links retain their labels without dead targets", async 
 
   const transcript = await readFile(path.join(fixture.scenarios, "local-link", "codex.md"), "utf8");
   assert.match(transcript, /Read the file\./);
+  assert.match(transcript, /cargo-target-unset=true\n\n⏺ Read the file\./);
   assert.doesNotMatch(transcript, /sandbox:|transcript-worktree/);
 });
 
