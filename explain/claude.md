@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+[Run metadata](claude.meta.json)
 
 
 ❯ what is rustc_mir_transform doing? why does it exist?

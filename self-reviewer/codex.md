@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](codex.meta.json)
+[Run metadata](codex.meta.json)
 
 
 ❯ I'm jyn, I'll review this myself. Add `--nocapture` as an alias for `--no-capture`.

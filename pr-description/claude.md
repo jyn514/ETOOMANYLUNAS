@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+[Run metadata](claude.meta.json)
 
 
 ❯ write a PR description for db135625a2429ff8bca25aa64d4a6e8056834ea8

@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](codex.meta.json)
+[Run metadata](codex.meta.json)
 
 
 ❯ I want to maek a PR to rust-lang/rust. What should I do first?

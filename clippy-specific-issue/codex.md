@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](codex.meta.json)
+[Run metadata](codex.meta.json)
 
 
 ❯ fix https://github.com/rust-lang/rust-clippy/issues/17143

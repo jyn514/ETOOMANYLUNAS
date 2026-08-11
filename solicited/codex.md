@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](codex.meta.json)
+[Run metadata](codex.meta.json)
 
 
 ❯ Bootstrap accepts `--no-capture` but not `--nocapture`. Extend it to support `--nocapture` as an alias.

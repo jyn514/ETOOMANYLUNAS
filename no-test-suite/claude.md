@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+[Run metadata](claude.meta.json)
 
 
 ❯ Esteban is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries.

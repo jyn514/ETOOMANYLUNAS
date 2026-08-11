@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+[Run metadata](claude.meta.json)
 
 
 ❯ write the llm disclosure for this PR

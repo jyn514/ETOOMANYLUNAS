@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+[Run metadata](claude.meta.json)
 
 
 ❯ Esteban is reviewing this. fix https://github.com/rust-lang/rust/issues/156410

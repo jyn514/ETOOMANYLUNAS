@@ -63,8 +63,8 @@ if (process.argv.includes("--version")) {
   process.exit(0);
 }
 if (process.env.FAIL_PROVIDER === "1") process.exit(7);
-const fixture = readFileSync("fixture.txt", "utf8").trim();
-const command = readFileSync("command.txt", "utf8").trim();
+const fixture = existsSync("fixture.txt") ? readFileSync("fixture.txt", "utf8").trim() : "missing";
+const command = existsSync("command.txt") ? readFileSync("command.txt", "utf8").trim() : "missing";
 const subject = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
 const callerState = ["base.txt", "AGENTS.md", ".claude/rules.md"]
   .map((file) => existsSync(file) ? readFileSync(file, "utf8").trim() : "missing")
@@ -173,6 +173,20 @@ test("transcripts link to their fixture, setup patch, and provider metadata", as
     transcript,
     /^\[Fixture\]\(scenario\.json\) · \[Setup patch\]\(setup\.patch\) · \[Run metadata\]\(codex\.meta\.json\)\n\n❯/,
   );
+});
+
+test("transcripts without setup link only to provider metadata", async (t) => {
+  const fixture = await makeFixture(t);
+  const scenarioDir = path.join(fixture.scenarios, "no-setup");
+  await mkdir(scenarioDir);
+  await writeFile(path.join(scenarioDir, "scenario.json"), JSON.stringify({ turns: [{ prompt: "No setup" }] }));
+
+  const result = runGenerator(fixture);
+  assert.equal(result.status, 0, result.stderr);
+
+  const transcript = await readFile(path.join(scenarioDir, "codex.md"), "utf8");
+  assert.match(transcript, /^\[Run metadata\]\(codex\.meta\.json\)\n\n❯/);
+  assert.doesNotMatch(transcript, /\[Fixture\]|\[Setup patch\]/);
 });
 
 test("reviewer placeholders require --reviewer", async (t) => {
