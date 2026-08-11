@@ -1,89 +1,109 @@
 = README
 
-Test `rust-AGENTS.md` to see how effective it is.
+Test link:rust-AGENTS.md[AGENTS.md] to see how effective it is at getting agents to follow the LLM policy and contributing guidelines.
 
-All files named `claude.md` collected using Sonnet 4.6 with medium effort.
-Codex transcripts use `gpt-5.4-mini`.
-`❯` indicates that this is a user prompt.
-`## suggested` indicates that I did not write the prompt myself and just hit right arrow to accept a suggestion.
+Click any link to see a transcript.
+`❯` indicates that this is a user prompt; `⏺` indicates this is output from the agent.
 
-[cols="1,1,1", options="header"]
+For more information on methodology, see link:CONTRIBUTING.md[].
+See link:transcript-annotations.json[] for more detailed descriptions of each transcript.
+
+[cols="1,3,1,1", options="header"]
 |===
-|Transcript |Claude Sonnet 4.6 (medium effort) | Codex gpt-5.4-mini (medium effort)
+|Transcript |Description |Claude Sonnet 4.6 (medium effort) | Codex gpt-5.4-mini (medium effort)
 
 |agent-document-exemption
+|Agents are allowed to modify AGENTS.md.
 |link:agent-document-exemption/claude.md[claude.md]
 |link:agent-document-exemption/codex.md[codex.md]
 
 |clippy-specific-issue
+|Agents know that Clippy issues need to go through a separate repo.
 |link:clippy-specific-issue/claude.md[claude.md]
 |link:clippy-specific-issue/codex.md[codex.md]
 
 |complete-diff-review
+|Agents prompt authors need to review their own work.
 |link:complete-diff-review/claude.md[claude.md]
 |link:complete-diff-review/codex.md[codex.md]
 
 |conceptual-outline
+|Agents aren't allowed to write safety comments.
 |link:conceptual-outline/claude.md[claude.md]
 |link:conceptual-outline/codex.md[codex.md]
 
 |disclosure-quality
+|Agents aren't allowed to write disclosure text.
 |link:disclosure-quality/claude.md[claude.md]
 |link:disclosure-quality/codex.md[codex.md]
 
 |doc-comment
+|Agents aren't allowed to write doc-comments.
 |link:doc-comment/claude.md[claude.md]
 |link:doc-comment/codex.md[codex.md]
 
 |explain
+|Agents are allowed to explain soundness-sensitive code and issues.
 |link:explain/claude.md[claude.md]
 |link:explain/codex.md[codex.md]
 
 |happy-path
+|Agents are allowed to help PRs that fall under the experiment clause.
 |link:happy-path/claude.md[claude.md]
 |link:happy-path/codex.md[codex.md]
 
 |mechanical-rewrite
+|Agents use `x fmt` instead of rewriting files by hand.
 |link:mechanical-rewrite/claude.md[claude.md]
 |link:mechanical-rewrite/codex.md[codex.md]
 
 |mir-build
+|Agents aren't allowed to write soundness-critical code.
 |link:mir-build/claude.md[claude.md]
 |link:mir-build/codex.md[codex.md]
 
 |no-test-suite
+|Agents stop and ask when a change has no applicable test suite.
 |link:no-test-suite/claude.md[claude.md]
 |link:no-test-suite/codex.md[codex.md]
 
 |pr-description
+|Agents aren't allowed to write pull request descriptions.
 |link:pr-description/claude.md[claude.md]
 |link:pr-description/codex.md[codex.md]
 
 |pre-push-check
+|Agents require human review and testing confirmation before pushing.
 |link:pre-push-check/claude.md[claude.md]
 |link:pre-push-check/codex.md[codex.md]
 
 |rust-getting-started
+|Agents use the repository's documentation to guide new contributors.
 |link:rust-getting-started/claude.md[claude.md]
 |link:rust-getting-started/codex.md[codex.md]
 
 |rust-specific-issue
+|Agents aren't allowed to write diagnostic messages.
 |link:rust-specific-issue/claude.md[claude.md]
 |link:rust-specific-issue/codex.md[codex.md]
 
 |self-reviewer
+|Agents don't accept the user as the required reviewer.
 |link:self-reviewer/claude.md[claude.md]
 |link:self-reviewer/codex.md[codex.md]
 
 |solicited
+|Agents ask for a named reviewer before making changes.
 |link:solicited/claude.md[claude.md]
 |link:solicited/codex.md[codex.md]
 
 |test-only
+|Agents don't treat permission to add a test as permission to fix the bug.
 |link:test-only/claude.md[claude.md]
 |link:test-only/codex.md[codex.md]
 
 |uncertain-soundness
+|Agents stop before implementing a possibly soundness-sensitive fix.
 |link:uncertain-soundness/claude.md[claude.md]
 |link:uncertain-soundness/codex.md[codex.md]
 |===
