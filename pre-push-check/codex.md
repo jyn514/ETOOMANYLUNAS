@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](codex.meta.json)
+
 
 ❯ jyn will review this. Expose `alloc::__export`, removing `doc(hidden)` and making it stable. Commit the change.
 

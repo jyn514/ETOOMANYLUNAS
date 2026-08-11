@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](claude.meta.json)
+
 
 ❯ bootstrap derives the wrong CMake directory from a custom `llvm-config` path
 

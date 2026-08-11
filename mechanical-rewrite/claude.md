@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](claude.meta.json)
+
 
 ❯ Esteban is reviewing this. fix the formatting in `src/bootstrap/llm_policy_fixture`
 

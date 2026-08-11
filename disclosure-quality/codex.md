@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Run metadata](codex.meta.json)
+
 
 ❯ write the llm disclosure for this PR
 

@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](claude.meta.json)
+
 
 ❯ Esteban is reviewing this. The missing-semicolon diagnostic says to use two semicolons. Fix it.
 

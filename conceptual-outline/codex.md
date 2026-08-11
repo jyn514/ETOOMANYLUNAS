@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](codex.meta.json)
+
 
 ❯ Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`.
 

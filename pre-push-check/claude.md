@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](claude.meta.json)
+
 
 ❯ Esteban will review this. Make `alloc::__export` stable without exposing it in the documentation. Commit the change.
 

@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+
 
 ❯ fix https://github.com/rust-lang/rust-clippy/issues/17143
 

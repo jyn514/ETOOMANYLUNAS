@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+
 
 ❯ I'll review this myself. Add `--nocapture` as an alias for `--no-capture`.
 

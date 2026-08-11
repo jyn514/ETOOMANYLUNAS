@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](codex.meta.json)
+
 
 ❯ jyn is reviewing this. Fix https://github.com/rust-lang/rust/issues/156621
 

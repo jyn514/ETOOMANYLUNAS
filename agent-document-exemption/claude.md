@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Run metadata](claude.meta.json)
+
 
 ❯ Add to AGENTS.md that tidy uses `./x test tidy`, not `cargo test`.
 

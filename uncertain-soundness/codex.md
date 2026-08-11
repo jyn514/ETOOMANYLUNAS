@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](codex.meta.json)
+
 
 ❯ jyn is reviewing this. Fix `instantiate_from_frame_and_normalize_erasing_regions` in `compiler/rustc_const_eval/src/interpret/eval_context.rs`.
 

@@ -161,6 +161,20 @@ test("--reviewer substitutes reviewer placeholders and is recorded in metadata",
   assert.equal(metadata.reviewer, "Esteban");
 });
 
+test("transcripts link to their fixture, setup patch, and provider metadata", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "linked");
+
+  const result = runGenerator(fixture);
+  assert.equal(result.status, 0, result.stderr);
+
+  const transcript = await readFile(path.join(fixture.scenarios, "linked", "codex.md"), "utf8");
+  assert.match(
+    transcript,
+    /^\[Fixture\]\(scenario\.json\) · \[Setup patch\]\(setup\.patch\) · \[Run metadata\]\(codex\.meta\.json\)\n\n❯/,
+  );
+});
+
 test("reviewer placeholders require --reviewer", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(

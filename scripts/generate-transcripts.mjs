@@ -835,7 +835,13 @@ async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
 async function runScenario(run, args) {
   if (!Array.isArray(run.turns) || run.turns.length === 0) throw new Error(`Run ${run.name} needs turns`);
 
-  const transcript = [];
+  const fixtureLinks = ["[Fixture](scenario.json)"];
+  if (run.setup?.patch) {
+    const setupPatch = path.relative(path.resolve(run.name), run.setup.patch).split(path.sep).join("/");
+    fixtureLinks.push(`[Setup patch](${setupPatch})`);
+  }
+  fixtureLinks.push(`[Run metadata](${run.provider}.meta.json)`);
+  const transcript = [fixtureLinks.join(" · "), ""];
   const dryRunCommands = [];
   const state = {
     turnIndex: 0,

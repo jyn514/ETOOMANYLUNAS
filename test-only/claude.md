@@ -1,3 +1,5 @@
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](claude.meta.json)
+
 
 ❯ Esteban is reviewing this. Add a regression test for bootstrap rejecting `--nocapture`, but don't fix it yet.
 
