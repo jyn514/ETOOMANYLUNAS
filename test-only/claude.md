@@ -17,11 +17,11 @@ grep -rn "nocapture" src/bootstrap/src 2>/dev/null
 </details>
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>src/bootstrap/src/core/config/flags.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs",
+  "file_path": "$CHECKOUT/src/bootstrap/src/core/config/flags.rs",
   "offset": 390,
   "limit": 60
 }
@@ -47,11 +47,11 @@ grep -n "fn \|Flags::parse\|nocapture\|no_capture" src/bootstrap/src/core/config
 </details>
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>src/bootstrap/src/core/config/tests.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs",
+  "file_path": "$CHECKOUT/src/bootstrap/src/core/config/tests.rs",
   "offset": 1
 }
 ```
@@ -59,11 +59,11 @@ grep -n "fn \|Flags::parse\|nocapture\|no_capture" src/bootstrap/src/core/config
 </details>
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>src/bootstrap/src/core/config/flags.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs",
+  "file_path": "$CHECKOUT/src/bootstrap/src/core/config/flags.rs",
   "offset": 190,
   "limit": 50
 }
@@ -81,12 +81,12 @@ grep -n "fn normalize_args" -A 20 src/bootstrap/src/core/config/flags.rs | head 
 </details>
 
 <details>
-<summary>⏺ Edit</summary>
+<summary>⏺ Edit — <code>src/bootstrap/src/core/config/tests.rs</code></summary>
 
 ```json
 {
   "replace_all": false,
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs",
+  "file_path": "$CHECKOUT/src/bootstrap/src/core/config/tests.rs",
   "old_string": "use clap::CommandFactory;\nuse serde::Deserialize;",
   "new_string": "use clap::{CommandFactory, Parser};\nuse serde::Deserialize;"
 }
@@ -95,12 +95,12 @@ grep -n "fn normalize_args" -A 20 src/bootstrap/src/core/config/flags.rs | head 
 </details>
 
 <details>
-<summary>⏺ Edit</summary>
+<summary>⏺ Edit — <code>src/bootstrap/src/core/config/tests.rs</code></summary>
 
 ```json
 {
   "replace_all": false,
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/tests.rs",
+  "file_path": "$CHECKOUT/src/bootstrap/src/core/config/tests.rs",
   "old_string": "#[test]\nfn clap_verify() {\n    Flags::command().debug_assert();\n}",
   "new_string": "#[test]\nfn clap_verify() {\n    Flags::command().debug_assert();\n}\n\n#[test]\nfn nocapture_is_rejected() {\n    // The legacy `--nocapture` spelling was replaced by `--no-capture`; bootstrap\n    // should reject it rather than silently accepting it as an alias.\n    assert!(Flags::try_parse_from([\"x.py\", \"test\", \"--nocapture\"]).is_err());\n}"
 }
@@ -114,7 +114,7 @@ grep -n "fn normalize_args" -A 20 src/bootstrap/src/core/config/flags.rs | head 
 <summary>⏺ Command</summary>
 
 ```console
-cd /private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap && cargo test --lib nocapture_is_rejected -- --nocapture 2>&1 | tail -60
+cd $CHECKOUT/src/bootstrap && cargo test --lib nocapture_is_rejected -- --nocapture 2>&1 | tail -60
 ```
 
 </details>
@@ -130,12 +130,12 @@ Classification: this is CLI-argument-parsing/config plumbing in bootstrap, not c
 ⏺ Removing the `alias = "nocapture"` on the `no_capture` flag so `--nocapture` is rejected, per the classification already stated (not soundness-sensitive, reviewer Esteban already named).
 
 <details>
-<summary>⏺ Edit</summary>
+<summary>⏺ Edit — <code>src/bootstrap/src/core/config/flags.rs</code></summary>
 
 ```json
 {
   "replace_all": false,
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap/src/core/config/flags.rs",
+  "file_path": "$CHECKOUT/src/bootstrap/src/core/config/flags.rs",
   "old_string": "        #[arg(long, alias = \"nocapture\")]\n        /// don't capture stdout/stderr of tests\n        no_capture: bool,",
   "new_string": "        #[arg(long)]\n        /// don't capture stdout/stderr of tests\n        no_capture: bool,"
 }
@@ -149,7 +149,7 @@ Classification: this is CLI-argument-parsing/config plumbing in bootstrap, not c
 <summary>⏺ Command</summary>
 
 ```console
-cd /private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-HJOjpU/checkout/src/bootstrap && cargo test --lib nocapture_is_rejected -- --nocapture 2>&1 | tail -20
+cd $CHECKOUT/src/bootstrap && cargo test --lib nocapture_is_rejected -- --nocapture 2>&1 | tail -20
 ```
 
 </details>

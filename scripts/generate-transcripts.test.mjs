@@ -77,7 +77,7 @@ console.log(JSON.stringify({ type: "thread.started", thread_id: "fixture-thread"
 if (process.env.EMIT_COMMANDS === "1") {
   console.log(JSON.stringify({
     type: "item.completed",
-    item: { type: "command_execution", command: "printf one\\nprintf two" }
+    item: { type: "command_execution", command: "printf one " + process.cwd() + "\\nprintf two" }
   }));
   console.log(JSON.stringify({
     type: "item.completed",
@@ -101,6 +101,10 @@ if (process.env.EMIT_LOCAL_LINK === "1") {
   }));
 }
 if (process.env.EMIT_COMMANDS === "1") {
+  console.log(JSON.stringify({
+    type: "item.completed",
+    item: { type: "file_change", change_type: "Edit", path: process.cwd() + "/src/file.rs" }
+  }));
   console.log(JSON.stringify({
     type: "item.completed",
     item: { type: "command_execution", command: "printf three" }
@@ -363,7 +367,7 @@ test("progress mode renders provider events to stderr without duplicating the tr
   assert.equal(transcript.match(/live\|command\|Fixture live\|true/g)?.length, 1);
 });
 
-test("adjacent commands render in collapsed groups", async (t) => {
+test("rendered transcripts match the golden Markdown fixture", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "commands");
 
@@ -371,15 +375,8 @@ test("adjacent commands render in collapsed groups", async (t) => {
   assert.equal(result.status, 0, result.stderr);
 
   const transcript = await readFile(path.join(fixture.scenarios, "commands", "codex.md"), "utf8");
-  assert.match(
-    transcript,
-    /<summary>⏺ Commands \(2\)<\/summary>[\s\S]*printf one\nprintf two[\s\S]*printf '`{3}'[\s\S]*<\/details>/,
-  );
-  assert.match(transcript, /<summary>⏺ Command<\/summary>[\s\S]*printf three[\s\S]*<\/details>/);
-  assert.equal(transcript.match(/<details>/g)?.length, 2);
-  assert.equal(transcript.match(/\n\n<details>/g)?.length, 2);
-  assert.equal(transcript.match(/<\/details>\n(?:\n|$)/g)?.length, 2);
-  assert.doesNotMatch(transcript, /Command\(/);
+  const expected = await readFile(path.join(sourceScripts, "fixtures", "commands-transcript.md"), "utf8");
+  assert.equal(transcript, expected);
 });
 
 test("temporary checkout links retain their labels without dead targets", async (t) => {

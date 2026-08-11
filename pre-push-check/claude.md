@@ -13,11 +13,11 @@ grep -rn "__export" library/alloc/src/lib.rs | head -50
 </details>
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>library/alloc/src/lib.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/library/alloc/src/lib.rs",
+  "file_path": "$CHECKOUT/library/alloc/src/lib.rs",
   "offset": 230,
   "limit": 30
 }
@@ -43,11 +43,11 @@ grep -rln "__export" tests/ 2>/dev/null | head -20
 </details>
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>tests/ui/alloc-export-stable.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/tests/ui/alloc-export-stable.rs"
+  "file_path": "$CHECKOUT/tests/ui/alloc-export-stable.rs"
 }
 ```
 
@@ -116,12 +116,12 @@ Re-running the test now, in the foreground this time so the result is directly o
 Making the fix: change the module's attribute to match the inner item (stable, same feature/since), keeping `#[doc(hidden)]` so it stays out of rendered docs.
 
 <details>
-<summary>⏺ Edit</summary>
+<summary>⏺ Edit — <code>library/alloc/src/lib.rs</code></summary>
 
 ```json
 {
   "replace_all": false,
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-onzAbZ/checkout/library/alloc/src/lib.rs",
+  "file_path": "$CHECKOUT/library/alloc/src/lib.rs",
   "old_string": "#[doc(hidden)]\n#[unstable(feature = \"alloc_export\", issue = \"none\")]\npub mod __export {",
   "new_string": "#[doc(hidden)]\n#[stable(feature = \"alloc_export\", since = \"CURRENT_RUSTC_VERSION\")]\npub mod __export {"
 }

@@ -13,11 +13,11 @@ find . -maxdepth 1 -iname "AGENTS.md"
 </details>
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>AGENTS.md</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-2BWRDM/checkout/AGENTS.md"
+  "file_path": "$CHECKOUT/AGENTS.md"
 }
 ```
 

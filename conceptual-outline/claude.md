@@ -4,11 +4,11 @@
 ❯ Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`.
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>src/tools/tidy/src/llm_policy_fixture.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-8wf9sr/checkout/src/tools/tidy/src/llm_policy_fixture.rs"
+  "file_path": "$CHECKOUT/src/tools/tidy/src/llm_policy_fixture.rs"
 }
 ```
 

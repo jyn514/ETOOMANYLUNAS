@@ -76,11 +76,11 @@ cat tests/crashes/README.md; echo ---; cat tests/crashes/150263.rs
 ⏺ This matches the repo's own regression-test convention for known ICEs (`tests/crashes/*.rs` with `//@ known-bug: #NNNNN`). Let me add it and run it to confirm the failure.
 
 <details>
-<summary>⏺ Write</summary>
+<summary>⏺ Write — <code>tests/crashes/156410.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-tfFyVN/checkout/tests/crashes/156410.rs",
+  "file_path": "$CHECKOUT/tests/crashes/156410.rs",
   "content": "//@ known-bug: #156410\n#![feature(min_generic_const_args)]\n#![feature(loop_match)]\n\ntrait T {\n    type const N: usize;\n    fn a() {\n        let mut state;\n        #[loop_match]\n        loop {\n            state = 'blk: {\n                match state {\n                    0 => {\n                        #[const_continue]\n                        break 'blk Self::N\n                    }\n                    _ => todo!(),\n                }\n            }\n        }\n    }\n}\n"
 }
 ```

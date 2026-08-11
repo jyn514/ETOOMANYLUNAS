@@ -17,11 +17,11 @@ grep -n "libnames\|libs\|--libnames\|ignore-libllvm\|fn output\|fn main\|llvm_co
 </details>
 
 <details>
-<summary>⏺ Read</summary>
+<summary>⏺ Read — <code>compiler/rustc_llvm/build.rs</code></summary>
 
 ```json
 {
-  "file_path": "/private/var/folders/t3/46yqwwp56vg2jp1604qr5wd00000gn/T/transcript-worktree-LPsFju/checkout/compiler/rustc_llvm/build.rs",
+  "file_path": "$CHECKOUT/compiler/rustc_llvm/build.rs",
   "offset": 300,
   "limit": 140
 }

@@ -243,6 +243,27 @@ function stripLocalLinkTargets(text) {
   );
 }
 
+function normalizeCheckoutPath(text, state) {
+  for (const checkoutPath of state.checkoutPaths) text = text.replaceAll(checkoutPath, "$CHECKOUT");
+  return text;
+}
+
+function renderedText(text, state) {
+  return normalizeCheckoutPath(stripLocalLinkTargets(text), state);
+}
+
+function escapeHtml(text) {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+function toolLabel(item, state) {
+  const name = item.name ?? "tool";
+  const rawTarget = item.input?.file_path ?? item.input?.path;
+  if (typeof rawTarget !== "string") return name;
+  const target = normalizeCheckoutPath(rawTarget, state).replace(/^\$CHECKOUT\//, "");
+  return `${name} — <code>${escapeHtml(target)}</code>`;
+}
+
 function pushEvent(out, text) {
   if (out.at(-1) !== "") out.push("");
   out.push(text, "");
@@ -271,13 +292,18 @@ function collectClaudeMarkdown(line, out, state) {
       if (item.type === "text" && item.text?.trim()) {
         flushCommands(out, state);
         state.claudeSawAssistantText = true;
-        pushEvent(out, `⏺ ${stripLocalLinkTargets(item.text.trim())}`);
+        pushEvent(out, `⏺ ${renderedText(item.text.trim(), state)}`);
       }
       if (item.type === "tool_use" && item.name === "Bash" && typeof item.input?.command === "string") {
-        state.commands.push(item.input.command);
+        state.commands.push(normalizeCheckoutPath(item.input.command, state));
       } else if (item.type === "tool_use") {
         flushCommands(out, state);
-        renderDetails(out, item.name ?? "tool", "json", JSON.stringify(item.input ?? {}, null, 2));
+        renderDetails(
+          out,
+          toolLabel(item, state),
+          "json",
+          normalizeCheckoutPath(JSON.stringify(item.input ?? {}, null, 2), state),
+        );
       }
     }
     return;
@@ -285,7 +311,7 @@ function collectClaudeMarkdown(line, out, state) {
 
   if (event.type === "result" && event.subtype === "success" && event.result?.trim() && !state.claudeSawAssistantText) {
     flushCommands(out, state);
-    pushEvent(out, `⏺ ${stripLocalLinkTargets(event.result.trim())}`);
+    pushEvent(out, `⏺ ${renderedText(event.result.trim(), state)}`);
   }
 }
 
@@ -298,16 +324,17 @@ function collectCodexMarkdown(line, out, state) {
   if (event.type !== "item.completed" || !item) return;
 
   if (item.type === "agent_message" && item.text?.trim()) {
-    const text = stripLocalLinkTargets(item.text.trim());
+    const text = renderedText(item.text.trim(), state);
     if (state.codexAgentMessageTexts.has(text)) return;
     state.codexAgentMessageTexts.add(text);
     flushCommands(out, state);
     pushEvent(out, `⏺ ${text}`);
   } else if (item.type === "command_execution") {
-    state.commands.push(String(item.command ?? ""));
+    state.commands.push(normalizeCheckoutPath(String(item.command ?? ""), state));
   } else if (item.type === "file_change") {
     flushCommands(out, state);
-    pushEvent(out, `⏺ ${item.change_type ?? "Edit"}(${item.path ?? "file"})`);
+    const target = normalizeCheckoutPath(String(item.path ?? "file"), state).replace(/^\$CHECKOUT\//, "");
+    pushEvent(out, `⏺ ${item.change_type ?? "Edit"}(${target})`);
   } else if (item.type === "web_search") {
     flushCommands(out, state);
     pushEvent(out, "⏺ WebSearch");
@@ -853,6 +880,7 @@ async function runScenario(run, args) {
     claudeSawAssistantText: false,
     codexAgentMessageTexts: new Set(),
     commands: [],
+    checkoutPaths: [],
   };
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
   let runCheckout = null;
@@ -863,6 +891,9 @@ async function runScenario(run, args) {
       `Preparing ${run.name} (${run.provider}) checkout`,
       async () => await prepareRunCheckout(run, args, runEnvironment.env, dryRunCommands),
     );
+    state.checkoutPaths = [runCheckout.cwd];
+    if (runCheckout.cwd.startsWith("/var/")) state.checkoutPaths.unshift(`/private${runCheckout.cwd}`);
+    if (runCheckout.cwd.startsWith("/private/var/")) state.checkoutPaths.push(runCheckout.cwd.slice("/private".length));
     await runProgressStep(
       args.progress && !args.dryRun && Boolean(run.setup),
       `Applying ${run.name} (${run.provider}) scenario setup`,
