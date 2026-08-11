@@ -1,7 +1,22 @@
 = README
 
 Test link:rust-AGENTS.md[AGENTS.md] to see how effective it is at getting agents to follow the LLM policy and contributing guidelines.
-AGENTS.md has been through extensive revisions based on real failures.
+AGENTS.md has been through extensive revisions based on real failures; see the git history.
+
+== AGENTS.md
+
+This is a rather long operationalization of the dev-guide as algorithmic instructions.
+Most of it was itself generated with an agent.
+
+Differences between this and the dev-guide / policy:
+
+* "strong suggestions" in the docs are turned into absolute requirements here; LLMs have trouble with discretion and judgement.
+* lang/edition/etc are not exempted; determining what falls under their scope was too hard to operationalize. members of those teams can still write their own AGENTS.md if this one interferes with their work (i wouldn't expect it to, though, it's mostly focused on code.)
+* the LLM requires a reviewer before making edits, not before posting the PR.
+  experimental PRs are not exempted (how could the LLM know it was experimental?).
+* soundness changes are always rejected, even if allowed by the policy (how could the LLM know you're in the org?)
+
+== Transcripts
 
 Click any link to see a transcript.
 `❯` indicates that this is a user prompt; `⏺` indicates this is output from the agent.
