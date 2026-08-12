@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "I'm debugging why a MIR optimization is running more often than I expect. Temporarily instrument `rustc_mir_transform` to print each optimization pass name as it runs."
+    }
+  ]
+}

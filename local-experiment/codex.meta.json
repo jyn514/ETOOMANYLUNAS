@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "generated_at": "2026-08-12T19:36:51.897Z",
+  "provider": "codex",
+  "model": "gpt-5.4-mini",
+  "provider_version": "codex-cli 0.147.0",
+  "harness_revision": "13076df4f96fe7bf9cde4ec02bb6754e7df49cb2",
+  "rust_revision": "1f8a8597bdbf7538909a2c1c168e856ff5fc73be",
+  "turns": [
+    {
+      "turn": 1,
+      "status": 0,
+      "duration_ms": 81425
+    }
+  ]
+}
