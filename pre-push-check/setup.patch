@@ -1,14 +1,13 @@
 diff --git a/library/alloc/src/lib.rs b/library/alloc/src/lib.rs
-index 0c712b91951..89ab24adac9 100644
 --- a/library/alloc/src/lib.rs
 +++ b/library/alloc/src/lib.rs
-@@ -243,7 +243,8 @@ pub mod vec;
+@@ -269,7 +269,7 @@ pub mod vec;
  #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
  pub mod wtf8;
  
--#[stable(feature = "alloc_export", since = "CURRENT_RUSTC_VERSION")]
-+#[doc(hidden)]
+ #[doc(hidden)]
+-#[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 +#[unstable(feature = "alloc_export", issue = "none")]
  pub mod __export {
-     #[stable(feature = "alloc_export", since = "CURRENT_RUSTC_VERSION")]
      pub use core::format_args;
+     pub use core::hint::must_use;

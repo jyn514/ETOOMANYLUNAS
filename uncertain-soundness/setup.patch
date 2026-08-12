@@ -1,8 +1,7 @@
 diff --git a/compiler/rustc_const_eval/src/interpret/eval_context.rs b/compiler/rustc_const_eval/src/interpret/eval_context.rs
-index 7dc6d29..2b0767a 100644
 --- a/compiler/rustc_const_eval/src/interpret/eval_context.rs
 +++ b/compiler/rustc_const_eval/src/interpret/eval_context.rs
-@@ -350,12 +350,5 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+@@ -348,12 +348,5 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
              "instantiate_from_frame_and_normalize_erasing_regions",
              %frame.instance
          );
@@ -11,7 +10,7 @@ index 7dc6d29..2b0767a 100644
 -            .try_instantiate_mir_and_normalize_erasing_regions(
 -                *self.tcx,
 -                self.typing_env,
--                ty::EarlyBinder::bind(value),
+-                ty::EarlyBinder::bind(self.tcx.tcx, value),
 -            )
 -            .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
 +        Ok(value)
