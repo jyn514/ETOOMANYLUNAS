@@ -323,6 +323,22 @@ test("setup state is isolated, committed, and visible to parallel runs", async (
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
 });
 
+test("a worker reuses its clean checkout between scenarios", async (t) => {
+  const fixture = await makeFixture(t);
+  const checkoutRecord = path.join(fixture.root, "worker-checkout");
+  await writeScenario(fixture.scenarios, "alpha", `printf '%s\\n' "$PWD" > ${checkoutRecord}`);
+  await writeScenario(
+    fixture.scenarios,
+    "beta",
+    `test "$PWD" = "$(cat ${checkoutRecord})" && test ! -e agent-change.txt && printf command > command.txt`,
+  );
+
+  const result = runGenerator({ ...fixture, extraArgs: ["--jobs", "1"] });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta/);
+});
+
 test("runs include current agent instructions but not unrelated checkout changes", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "dirty-input");

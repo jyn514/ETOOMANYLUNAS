@@ -773,6 +773,32 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
   };
 }
 
+async function resetRunCheckout(run, checkout, args) {
+  const reset = async (command, description) =>
+    await runCheckedCommand(command, checkout.cwd, checkout.env, `${run.name} (${run.provider}) ${description}`);
+
+  await reset(
+    { command: "git", args: ["reset", "--hard", args.inputRevision] },
+    "checkout reset",
+  );
+  await reset({ command: "git", args: ["clean", "-ffdx"] }, "checkout clean");
+  await reset(
+    {
+      command: "git",
+      args: ["submodule", "update", "--init", "--force", "--", "library/backtrace", "src/tools/cargo"],
+    },
+    "submodule restore",
+  );
+  await reset(
+    { command: "git", args: ["submodule", "foreach", "--recursive", "git reset --hard"] },
+    "submodule reset",
+  );
+  await reset(
+    { command: "git", args: ["submodule", "foreach", "--recursive", "git clean -ffdx"] },
+    "submodule clean",
+  );
+}
+
 async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
   if (!run.setup) return;
 
@@ -859,7 +885,7 @@ async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
   }
 }
 
-async function runScenario(run, args) {
+async function runScenario(run, args, workerCheckout = null) {
   if (!Array.isArray(run.turns) || run.turns.length === 0) throw new Error(`Run ${run.name} needs turns`);
 
   const fixtureLinks = [];
@@ -883,14 +909,31 @@ async function runScenario(run, args) {
     checkoutPaths: [],
   };
   const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
-  let runCheckout = null;
+  let runCheckout = workerCheckout;
 
   try {
-    runCheckout = await runProgressStep(
-      args.progress && !args.dryRun,
-      `Preparing ${run.name} (${run.provider}) checkout`,
-      async () => await prepareRunCheckout(run, args, runEnvironment.env, dryRunCommands),
-    );
+    if (runCheckout) {
+      await runProgressStep(
+        args.progress,
+        `Resetting ${run.name} (${run.provider}) checkout`,
+        async () => await resetRunCheckout(run, runCheckout, args),
+      );
+    } else {
+      runCheckout = await runProgressStep(
+        args.progress && !args.dryRun,
+        `Preparing ${run.name} (${run.provider}) checkout`,
+        async () => await prepareRunCheckout(run, args, runEnvironment.env, dryRunCommands),
+      );
+    }
+    if (workerCheckout) {
+      runCheckout = {
+        ...workerCheckout,
+        env: {
+          ...runEnvironment.env,
+          RUST_BOOTSTRAP_CONFIG: workerCheckout.env.RUST_BOOTSTRAP_CONFIG,
+        },
+      };
+    }
     state.checkoutPaths = [runCheckout.cwd];
     if (runCheckout.cwd.startsWith("/var/")) state.checkoutPaths.unshift(`/private${runCheckout.cwd}`);
     if (runCheckout.cwd.startsWith("/private/var/")) state.checkoutPaths.push(runCheckout.cwd.slice("/private".length));
@@ -959,7 +1002,7 @@ async function runScenario(run, args) {
     }
   } finally {
     try {
-      await runCheckout?.cleanup?.();
+      if (!workerCheckout) await runCheckout?.cleanup?.();
     } finally {
       await runEnvironment.cleanup?.();
     }
@@ -1107,23 +1150,32 @@ async function runAll(runs, args) {
   const totalRuns = runs.length;
 
   async function worker() {
-    while (nextRunIndex < runs.length) {
-      const runIndex = nextRunIndex;
-      const run = runs[runIndex];
-      nextRunIndex += 1;
-      if (!args.dryRun && args.progress) console.error(`\n==> [${runIndex + 1}/${totalRuns}] ${run.name} (${run.provider})`);
-      else if (!args.dryRun) console.error(`\n==> ${run.name} (${run.provider})`);
-      try {
-        await runScenario(run, args);
-      } catch (error) {
-        failures.push({ run, error });
-        console.error(`✗ ${run.name} (${run.provider}): ${error.message}`);
-        continue;
+    let workerCheckout = null;
+    try {
+      if (!args.dryRun) {
+        const firstRun = runs[nextRunIndex];
+        workerCheckout = await prepareRunCheckout(firstRun, args, agentEnvironment(), []);
       }
-      completedRuns += 1;
-      if (!args.dryRun && args.progress) {
-        console.error(`✓ [${completedRuns}/${totalRuns}] ${run.name} (${run.provider}) done`);
+      while (nextRunIndex < runs.length) {
+        const runIndex = nextRunIndex;
+        const run = runs[runIndex];
+        nextRunIndex += 1;
+        if (!args.dryRun && args.progress) console.error(`\n==> [${runIndex + 1}/${totalRuns}] ${run.name} (${run.provider})`);
+        else if (!args.dryRun) console.error(`\n==> ${run.name} (${run.provider})`);
+        try {
+          await runScenario(run, args, workerCheckout);
+        } catch (error) {
+          failures.push({ run, error });
+          console.error(`✗ ${run.name} (${run.provider}): ${error.message}`);
+          continue;
+        }
+        completedRuns += 1;
+        if (!args.dryRun && args.progress) {
+          console.error(`✓ [${completedRuns}/${totalRuns}] ${run.name} (${run.provider}) done`);
+        }
       }
+    } finally {
+      await workerCheckout?.cleanup?.();
     }
   }
 
