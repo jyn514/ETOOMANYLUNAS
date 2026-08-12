@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { chmod, copyFile, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { test as nodeTest } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -41,6 +41,18 @@ function execute(command, args, options = {}) {
   return spawnSync(command, args, {
     encoding: "utf8",
     ...options,
+  });
+}
+
+function executeAsync(command, args, options = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (data) => { stdout += data; });
+    child.stderr.on("data", (data) => { stderr += data; });
+    child.on("error", (error) => resolve({ status: 127, stdout, stderr: `${stderr}${error.message}\n`, error }));
+    child.on("close", (status) => resolve({ status, stdout, stderr }));
   });
 }
 
@@ -218,7 +230,7 @@ nodeTest("annotation hashes match their transcripts", async () => {
   }
 });
 
-test("--reviewer substitutes reviewer placeholders and is recorded in metadata", async (t) => {
+test("one invocation renders and isolates selected scenarios", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(
     fixture.scenarios,
@@ -226,44 +238,75 @@ test("--reviewer substitutes reviewer placeholders and is recorded in metadata",
     "printf command > command.txt",
     "{{reviewer}} is reviewing this.",
   );
+  await writeScenario(fixture.scenarios, "linked");
+  const noSetupDir = path.join(fixture.scenarios, "no-setup");
+  await mkdir(noSetupDir);
+  await writeFile(path.join(noSetupDir, "scenario.json"), JSON.stringify({ turns: [{ prompt: "No setup" }] }));
+  await writeScenario(fixture.scenarios, "selected-alpha");
+  await writeScenario(fixture.scenarios, "skipped-beta");
+  await writeScenario(fixture.scenarios, "selected-gamma");
+  await writeScenario(fixture.scenarios, "parallel-alpha");
+  await writeScenario(fixture.scenarios, "parallel-beta", "test -f fixture.txt && printf command > command.txt");
+  await writeScenario(fixture.scenarios, "live");
+  await writeScenario(fixture.scenarios, "local-link");
+  const selected = [
+    "reviewed",
+    "linked",
+    "no-setup",
+    "selected-alpha",
+    "selected-gamma",
+    "parallel-alpha",
+    "parallel-beta",
+    "live",
+    "local-link",
+  ];
+  const rustRevision = git(fixture.rustRepo, "rev-parse", "HEAD");
 
-  const result = runGenerator({
+  const result = await runGenerator({
     ...fixture,
-    extraArgs: ["--reviewer", "Esteban"],
+    extraArgs: [
+      "--reviewer",
+      "Esteban",
+      "--jobs",
+      "2",
+      "--progress",
+      ...selected.flatMap((name) => ["--only", name]),
+    ],
+    extraEnv: {
+      CARGO_TARGET_DIR: path.join(fixture.root, "external-target"),
+      EMIT_LOCAL_LINK: "1",
+    },
   });
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(await readFile(path.join(fixture.scenarios, "reviewed", "codex.md"), "utf8"), /Esteban is reviewing this/);
   const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "reviewed", "codex.meta.json"), "utf8"));
   assert.equal(metadata.reviewer, "Esteban");
-});
-
-test("transcripts link to their fixture, setup patch, and provider metadata", async (t) => {
-  const fixture = await makeFixture(t);
-  await writeScenario(fixture.scenarios, "linked");
-
-  const result = runGenerator(fixture);
-  assert.equal(result.status, 0, result.stderr);
-
+  assert.equal(metadata.rust_revision, rustRevision);
   const transcript = await readFile(path.join(fixture.scenarios, "linked", "codex.md"), "utf8");
   assert.match(
     transcript,
     /^\[Fixture\]\(scenario\.json\) · \[Setup patch\]\(setup\.patch\) · \[Run metadata\]\(codex\.meta\.json\)\n\n❯/,
   );
-});
-
-test("transcripts without setup link only to provider metadata", async (t) => {
-  const fixture = await makeFixture(t);
-  const scenarioDir = path.join(fixture.scenarios, "no-setup");
-  await mkdir(scenarioDir);
-  await writeFile(path.join(scenarioDir, "scenario.json"), JSON.stringify({ turns: [{ prompt: "No setup" }] }));
-
-  const result = runGenerator(fixture);
-  assert.equal(result.status, 0, result.stderr);
-
-  const transcript = await readFile(path.join(scenarioDir, "codex.md"), "utf8");
-  assert.match(transcript, /^\[Run metadata\]\(codex\.meta\.json\)\n\n❯/);
-  assert.doesNotMatch(transcript, /\[Fixture\]|\[Setup patch\]/);
+  const noSetupTranscript = await readFile(path.join(noSetupDir, "codex.md"), "utf8");
+  assert.match(noSetupTranscript, /^\[Run metadata\]\(codex\.meta\.json\)\n\n❯/);
+  assert.doesNotMatch(noSetupTranscript, /\[Fixture\]|\[Setup patch\]/);
+  await readFile(path.join(fixture.scenarios, "selected-alpha", "codex.md"));
+  await readFile(path.join(fixture.scenarios, "selected-gamma", "codex.md"));
+  await assert.rejects(readFile(path.join(fixture.scenarios, "skipped-beta", "codex.md")), { code: "ENOENT" });
+  assert.match(await readFile(path.join(fixture.scenarios, "parallel-alpha", "codex.md"), "utf8"), /parallel-alpha\|command\|Fixture parallel-alpha\|true/);
+  assert.match(await readFile(path.join(fixture.scenarios, "parallel-beta", "codex.md"), "utf8"), /parallel-beta\|command\|Fixture parallel-beta\|true/);
+  assert.match(await readFile(path.join(fixture.scenarios, "parallel-alpha", "codex.md"), "utf8"), /cargo-target-unset=true/);
+  assert.match(result.stderr, /⏺ live\|command\|Fixture live\|true/);
+  const liveTranscript = await readFile(path.join(fixture.scenarios, "live", "codex.md"), "utf8");
+  assert.equal(liveTranscript.match(/live\|command\|Fixture live\|true/g)?.length, 1);
+  const localLinkTranscript = await readFile(path.join(fixture.scenarios, "local-link", "codex.md"), "utf8");
+  assert.match(localLinkTranscript, /Read the file\./);
+  assert.match(localLinkTranscript, /cargo-target-unset=true\n\n⏺ Read the file\./);
+  assert.doesNotMatch(localLinkTranscript, /sandbox:|transcript-worktree/);
+  assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
+  await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
+  assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
 });
 
 test("reviewer placeholders require --reviewer", async (t) => {
@@ -275,14 +318,14 @@ test("reviewer placeholders require --reviewer", async (t) => {
     "{{reviewer}} is reviewing this.",
   );
 
-  const result = runGenerator(fixture);
+  const result = await runGenerator(fixture);
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /--reviewer is required by scenario: reviewed/);
 });
 
 function runGenerator({ scenarios, rustRepo, codexHome, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
-  return execute(
+  return executeAsync(
     process.execPath,
     [
       runner,
@@ -300,61 +343,18 @@ function runGenerator({ scenarios, rustRepo, codexHome, fakeCodex, runner, extra
   );
 }
 
-test("repeated --only flags select multiple scenarios", async (t) => {
-  const fixture = await makeFixture(t);
-  await writeScenario(fixture.scenarios, "alpha");
-  await writeScenario(fixture.scenarios, "beta");
-  await writeScenario(fixture.scenarios, "gamma");
-
-  const result = runGenerator({
-    ...fixture,
-    extraArgs: ["--only", "alpha", "--only", "gamma", "--jobs", "2"],
-  });
-
-  assert.equal(result.status, 0, result.stderr);
-  await readFile(path.join(fixture.scenarios, "alpha", "codex.md"));
-  await readFile(path.join(fixture.scenarios, "gamma", "codex.md"));
-  await assert.rejects(readFile(path.join(fixture.scenarios, "beta", "codex.md")), { code: "ENOENT" });
-});
-
 test("a scenario cannot be selected and skipped", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "alpha");
   await writeScenario(fixture.scenarios, "beta");
 
-  const result = runGenerator({
+  const result = await runGenerator({
     ...fixture,
     extraArgs: ["--only", "alpha", "--only", "beta", "--skip", "alpha"],
   });
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Scenario cannot be both --only and --skip: alpha/);
-});
-
-test("setup state is isolated, committed, and visible to parallel runs", async (t) => {
-  const fixture = await makeFixture(t);
-  await writeScenario(fixture.scenarios, "alpha");
-  await writeScenario(fixture.scenarios, "beta", "test -f fixture.txt && printf command > command.txt");
-  const rustRevision = git(fixture.rustRepo, "rev-parse", "HEAD");
-
-  const result = runGenerator({
-    ...fixture,
-    extraArgs: ["--jobs", "2"],
-    extraEnv: { CARGO_TARGET_DIR: path.join(fixture.root, "external-target") },
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(await readFile(path.join(fixture.scenarios, "alpha", "codex.md"), "utf8"), /alpha\|command\|Fixture alpha\|true/);
-  assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta\|true/);
-  assert.match(
-    await readFile(path.join(fixture.scenarios, "alpha", "codex.md"), "utf8"),
-    /cargo-target-unset=true/,
-  );
-  const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "alpha", "codex.meta.json"), "utf8"));
-  assert.equal(metadata.rust_revision, rustRevision);
-
-  assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
-  await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
-  assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
 });
 
 test("a worker reuses its clean checkout between scenarios", async (t) => {
@@ -367,7 +367,7 @@ test("a worker reuses its clean checkout between scenarios", async (t) => {
     `test "$PWD" = "$(cat ${checkoutRecord})" && test ! -e agent-change.txt && printf command > command.txt`,
   );
 
-  const result = runGenerator({ ...fixture, extraArgs: ["--jobs", "1"] });
+  const result = await runGenerator({ ...fixture, extraArgs: ["--jobs", "1"] });
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta/);
@@ -381,7 +381,7 @@ test("runs include current agent instructions but not unrelated checkout changes
   await mkdir(path.join(fixture.rustRepo, ".claude"));
   await writeFile(path.join(fixture.rustRepo, ".claude", "rules.md"), "claude instructions\n");
 
-  const result = runGenerator({ ...fixture });
+  const result = await runGenerator({ ...fixture });
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     await readFile(path.join(fixture.scenarios, "dirty-input", "codex.md"), "utf8"),
@@ -411,7 +411,7 @@ test("snapshotting ignores broken submodule worktrees", async (t) => {
   await writeFile(path.join(submodule, ".git"), "gitdir: ../../../missing/modules/library/backtrace\n");
   await writeFile(path.join(fixture.rustRepo, "AGENTS.md"), "agent instructions\n");
 
-  const result = runGenerator({ ...fixture, extraEnv: { GIT_ALLOW_PROTOCOL: "file" } });
+  const result = await runGenerator({ ...fixture, extraEnv: { GIT_ALLOW_PROTOCOL: "file" } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     await readFile(path.join(fixture.scenarios, "broken-submodule", "codex.md"), "utf8"),
@@ -424,7 +424,7 @@ test("a failing setup command is reported and its worktree is removed", async (t
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "broken", "! true");
 
-  const result = runGenerator({ ...fixture });
+  const result = await runGenerator({ ...fixture });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /broken \(codex\) setup command/);
   assert.match(result.stderr, /failed with status 1/);
@@ -435,7 +435,7 @@ test("a provider failure is recorded and its worktree is removed", async (t) => 
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "provider-failure");
 
-  const result = runGenerator({ ...fixture, extraEnv: { FAIL_PROVIDER: "1" } });
+  const result = await runGenerator({ ...fixture, extraEnv: { FAIL_PROVIDER: "1" } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     await readFile(path.join(fixture.scenarios, "provider-failure", "codex.md"), "utf8"),
@@ -444,41 +444,16 @@ test("a provider failure is recorded and its worktree is removed", async (t) => 
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
 });
 
-test("progress mode renders provider events to stderr without duplicating the transcript", async (t) => {
-  const fixture = await makeFixture(t);
-  await writeScenario(fixture.scenarios, "live");
-
-  const result = runGenerator({ ...fixture, extraArgs: ["--progress"] });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /⏺ live\|command\|Fixture live\|true/);
-
-  const transcript = await readFile(path.join(fixture.scenarios, "live", "codex.md"), "utf8");
-  assert.equal(transcript.match(/live\|command\|Fixture live\|true/g)?.length, 1);
-});
-
 test("rendered transcripts match the golden Markdown fixture", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "commands");
 
-  const result = runGenerator({ ...fixture, extraEnv: { EMIT_COMMANDS: "1" } });
+  const result = await runGenerator({ ...fixture, extraEnv: { EMIT_COMMANDS: "1" } });
   assert.equal(result.status, 0, result.stderr);
 
   const transcript = await readFile(path.join(fixture.scenarios, "commands", "codex.md"), "utf8");
   const expected = await readFile(path.join(sourceScripts, "fixtures", "commands-transcript.md"), "utf8");
   assert.equal(transcript, expected);
-});
-
-test("temporary checkout links retain their labels without dead targets", async (t) => {
-  const fixture = await makeFixture(t);
-  await writeScenario(fixture.scenarios, "local-link");
-
-  const result = runGenerator({ ...fixture, extraEnv: { EMIT_LOCAL_LINK: "1" } });
-  assert.equal(result.status, 0, result.stderr);
-
-  const transcript = await readFile(path.join(fixture.scenarios, "local-link", "codex.md"), "utf8");
-  assert.match(transcript, /Read the file\./);
-  assert.match(transcript, /cargo-target-unset=true\n\n⏺ Read the file\./);
-  assert.doesNotMatch(transcript, /sandbox:|transcript-worktree/);
 });
 
 test("invalid setup schemas fail before creating a worktree", async (t) => {
@@ -490,7 +465,7 @@ test("invalid setup schemas fail before creating a worktree", async (t) => {
     JSON.stringify({ setup: { commands: "not-an-array" }, turns: [{ prompt: "Never runs" }] }),
   );
 
-  const result = runGenerator({ ...fixture });
+  const result = await runGenerator({ ...fixture });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /setup\.commands must be an array of non-empty strings/);
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
@@ -501,7 +476,7 @@ test("dry runs include setup commands without requiring or changing a repository
   await writeScenario(fixture.scenarios, "dry", null);
 
   const missingRepo = path.join(fixture.root, "missing-rust");
-  const result = runGenerator({
+  const result = await runGenerator({
     ...fixture,
     rustRepo: missingRepo,
     extraArgs: ["--dry-run"],
