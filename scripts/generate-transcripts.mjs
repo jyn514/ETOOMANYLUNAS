@@ -15,6 +15,7 @@ const PROVIDER_MODELS = {
   claude: "claude-sonnet-5",
   codex: "gpt-5.4-mini",
 };
+const TRANSCRIPT_SUBMODULES = ["library/backtrace", "src/tools/cargo"];
 
 function usage() {
   console.error(`Usage:
@@ -612,6 +613,19 @@ async function collectProviderVersions(args, env) {
   return versions;
 }
 
+async function findTranscriptSubmodules(args, env) {
+  const result = await runCheckedCommand(
+    { command: "git", args: ["ls-tree", args.inputRevision, "--", ...TRANSCRIPT_SUBMODULES] },
+    args.rustRepo,
+    env,
+    "transcript submodule discovery",
+  );
+  return result.stdout
+    .split("\n")
+    .filter((line) => line.startsWith("160000 "))
+    .map((line) => line.slice(line.indexOf("\t") + 1));
+}
+
 async function prepareCheckoutTemplate(args, env) {
   if (args.dryRun || !args.useCheckoutTemplate) return null;
 
@@ -647,7 +661,7 @@ async function prepareCheckoutTemplate(args, env) {
         await runCheckedCommand(
           {
             command: "git",
-            args: ["submodule", "update", "--init", "--depth", "1", "--", "library/backtrace", "src/tools/cargo"],
+            args: ["submodule", "update", "--init", "--depth", "1", "--", ...args.submodulePaths],
           },
           checkout,
           env,
@@ -684,8 +698,7 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
     "--depth",
     "1",
     "--",
-    "library/backtrace",
-    "src/tools/cargo",
+    ...args.submodulePaths,
   ];
   const submoduleCommand = {
     command: "git",
@@ -693,7 +706,8 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
   };
 
   if (args.dryRun) {
-    dryRunCommands.push(commandText(cloneCommand), commandText(checkoutCommand), commandText(submoduleCommand));
+    dryRunCommands.push(commandText(cloneCommand), commandText(checkoutCommand));
+    if (args.submodulePaths.length > 0) dryRunCommands.push(commandText(submoduleCommand));
     return {
       cwd: placeholder,
       env,
@@ -719,7 +733,7 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
     await runCheckedCommand(actualCloneCommand, args.rustRepo, env, `${run.name} (${run.provider}) clone setup`);
     await runCheckedCommand(actualCheckoutCommand, worktree, env, `${run.name} (${run.provider}) checkout setup`);
     if (args.checkoutTemplate) {
-      for (const submodule of ["library/backtrace", "src/tools/cargo"]) {
+      for (const submodule of args.submodulePaths) {
         await runCheckedCommand(
           {
             command: "git",
@@ -744,7 +758,7 @@ async function prepareRunCheckout(run, args, env, dryRunCommands) {
         env,
         `${run.name} (${run.provider}) local submodule setup`,
       );
-    } else {
+    } else if (args.submodulePaths.length > 0) {
       await runCheckedCommand(
         { command: "git", args: submoduleArgs },
         worktree,
@@ -782,21 +796,20 @@ async function resetRunCheckout(run, checkout, args) {
     "checkout reset",
   );
   await reset({ command: "git", args: ["clean", "-ffdx"] }, "checkout clean");
-  await reset(
-    {
-      command: "git",
-      args: ["submodule", "update", "--init", "--force", "--", "library/backtrace", "src/tools/cargo"],
-    },
-    "submodule restore",
-  );
-  await reset(
-    { command: "git", args: ["submodule", "foreach", "--recursive", "git reset --hard"] },
-    "submodule reset",
-  );
-  await reset(
-    { command: "git", args: ["submodule", "foreach", "--recursive", "git clean -ffdx"] },
-    "submodule clean",
-  );
+  if (args.submodulePaths.length > 0) {
+    await reset(
+      { command: "git", args: ["submodule", "update", "--init", "--force", "--", ...args.submodulePaths] },
+      "submodule restore",
+    );
+    await reset(
+      { command: "git", args: ["submodule", "foreach", "--recursive", "git reset --hard"] },
+      "submodule reset",
+    );
+    await reset(
+      { command: "git", args: ["submodule", "foreach", "--recursive", "git clean -ffdx"] },
+      "submodule clean",
+    );
+  }
 }
 
 async function applyScenarioSetup(run, cwd, args, env, dryRunCommands) {
@@ -1209,6 +1222,7 @@ async function main() {
     process.env.TRANSCRIPTS_BOOTSTRAP_CACHE ?? path.join(cacheRoot, "definitely-not-rust", "bootstrap"),
   );
   args.inputRevision = "$INPUT_REVISION";
+  args.submodulePaths = TRANSCRIPT_SUBMODULES;
   if (!args.dryRun) {
     await mkdir(args.bootstrapCachePath, { recursive: true });
     const rustRepoStat = await stat(args.rustRepo).catch(() => null);
@@ -1225,12 +1239,13 @@ async function main() {
       "Snapshotting Rust inputs",
       async () => await snapshotInputRevision(args, agentEnvironment()),
     );
+    args.submodulePaths = await findTranscriptSubmodules(args, agentEnvironment());
   }
 
   const runs = scenarios.flatMap((scenario) =>
     args.providers.map((provider) => ({ ...scenario, provider, bootstrapCachePath: args.bootstrapCachePath })),
   );
-  args.useCheckoutTemplate = runs.length > 1;
+  args.useCheckoutTemplate = runs.length > 1 && args.submodulePaths.length > 0;
   const template = await prepareCheckoutTemplate(args, agentEnvironment());
   args.checkoutTemplate = template?.checkout ?? null;
   try {

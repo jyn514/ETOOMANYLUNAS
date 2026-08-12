@@ -1,14 +1,20 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import test from "node:test";
+import { test as nodeTest } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const sourceScripts = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.dirname(sourceScripts);
+const tests = [];
+let fixtureTemplate = null;
+
+function test(name, body) {
+  tests.push({ name, body });
+}
 
 async function readAnnotations() {
   return JSON.parse(await readFile(path.join(repositoryRoot, "transcript-annotations.json"), "utf8"));
@@ -44,16 +50,18 @@ function git(repo, ...args) {
   return result.stdout.trim();
 }
 
-async function makeFixture(t) {
-  const root = await mkdtemp(path.join(tmpdir(), "generate-transcripts-test-"));
+async function makeFixtureTemplate(t) {
+  const root = await mkdtemp(path.join(tmpdir(), "generate-transcripts-template-"));
   t.after(async () => {
     await rm(root, { recursive: true, force: true });
   });
 
   const rustRepo = path.join(root, "rust");
   const scenarios = path.join(root, "scenarios");
+  const codexHome = path.join(root, "codex-home");
   await mkdir(rustRepo);
   await mkdir(scenarios);
+  await mkdir(codexHome);
   await mkdir(path.join(scenarios, "scripts"));
   const runner = path.join(scenarios, "scripts", "generate-transcripts.mjs");
   await copyFile(path.join(sourceScripts, "generate-transcripts.mjs"), runner);
@@ -137,7 +145,33 @@ if (process.env.EMIT_COMMANDS === "1") {
   );
   await chmod(fakeCodex, 0o755);
 
-  return { root, rustRepo, scenarios, fakeCodex, runner };
+  return { root, rustRepo, scenarios, codexHome, fakeCodex, runner };
+}
+
+async function makeFixture(t) {
+  assert(fixtureTemplate);
+  const root = await mkdtemp(path.join(tmpdir(), "generate-transcripts-test-"));
+  t.after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const rustRepo = path.join(root, "rust");
+  const scenarios = path.join(root, "scenarios");
+  const codexHome = path.join(root, "codex-home");
+  await Promise.all([
+    cp(fixtureTemplate.rustRepo, rustRepo, { recursive: true }),
+    cp(fixtureTemplate.scenarios, scenarios, { recursive: true }),
+    mkdir(codexHome),
+  ]);
+
+  return {
+    root,
+    rustRepo,
+    scenarios,
+    codexHome,
+    fakeCodex: fixtureTemplate.fakeCodex,
+    runner: path.join(scenarios, "scripts", "generate-transcripts.mjs"),
+  };
 }
 
 async function writeScenario(scenarios, name, command = "printf command > command.txt", prompt = `Run ${name}`) {
@@ -168,13 +202,13 @@ index 0000000..e69de29
   );
 }
 
-test("annotations cover every generated transcript", async () => {
+nodeTest("annotations cover every generated transcript", async () => {
   const document = await readAnnotations();
   assert.equal(document.version, 1);
   assert.deepEqual(Object.keys(document.annotations).sort(), await transcriptPaths());
 });
 
-test("annotation hashes match their transcripts", async () => {
+nodeTest("annotation hashes match their transcripts", async () => {
   const { annotations } = await readAnnotations();
 
   for (const [transcriptPath, annotation] of Object.entries(annotations)) {
@@ -247,7 +281,7 @@ test("reviewer placeholders require --reviewer", async (t) => {
   assert.match(result.stderr, /--reviewer is required by scenario: reviewed/);
 });
 
-function runGenerator({ scenarios, rustRepo, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
+function runGenerator({ scenarios, rustRepo, codexHome, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
   return execute(
     process.execPath,
     [
@@ -261,7 +295,7 @@ function runGenerator({ scenarios, rustRepo, fakeCodex, runner, extraArgs = [], 
     ],
     {
       cwd: scenarios,
-      env: { ...process.env, CODEX_BIN: fakeCodex, ...extraEnv },
+      env: { ...process.env, CODEX_BIN: fakeCodex, CODEX_HOME: codexHome, ...extraEnv },
     },
   );
 }
@@ -479,4 +513,9 @@ test("dry runs include setup commands without requiring or changing a repository
   assert.doesNotMatch(result.stderr, /'git' 'add' '--all'/);
   assert.match(result.stderr, /git.*commit.*Fixture dry/);
   await assert.rejects(readFile(path.join(fixture.scenarios, "dry", "codex.md")), { code: "ENOENT" });
+});
+
+nodeTest("generate transcripts", { concurrency: 4 }, async (t) => {
+  fixtureTemplate = await makeFixtureTemplate(t);
+  await Promise.all(tests.map(({ name, body }) => t.test(name, body)));
 });
