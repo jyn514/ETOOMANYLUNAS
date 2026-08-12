@@ -1,20 +1,32 @@
 [Run metadata](claude.meta.json)
 
-
 ❯ I want to maek a PR to rust-lang/rust. What should I do first?
 
-⏺ First steps, no code changes yet:
+⏺ Good first step is picking a concrete, small target rather than diving into the whole codebase cold. Here's the practical path:
 
-1. **Find or pick an issue.** Check [rust-lang/rust issues](https://github.com/rust-lang/rust/issues) — look for `E-easy`/`E-mentor`/`good-first-issue` labels if new to the codebase, or work off a bug you've hit.
+**1. Find something scoped to work on**
+- Browse issues tagged [`E-easy`](https://github.com/rust-lang/rust/labels/E-easy) or [`E-mentor`](https://github.com/rust-lang/rust/labels/E-mentor) — mentored issues usually have a comment explaining exactly what to change and where.
+- If you already know an area (e.g. diagnostics, a specific lint, rustdoc), search issues in that area instead of picking randomly — you'll ramp up faster with your own itch.
 
-2. **Read the routing docs.** `CONTRIBUTING.md` in this checkout routes compiler work to the rustc-dev-guide, std work to the std-dev-guide. Skim those for the area involved before touching code.
+**2. Set up the toolchain properly (this is the part people underestimate)**
+```
+git clone https://github.com/rust-lang/rust.git
+cd rust
+./x setup   # pick a profile, e.g. "compiler" or "library"
+```
+- Building is slow the first time (30min–1hr+). Use `./x build library` or a narrower target rather than a full bootstrap if you can.
+- Read `CONTRIBUTING.md` and `rustc-dev-guide` (https://rustc-dev-guide.rust-lang.org/) — especially the "Getting started" and "Walkthrough" chapters if you're touching the compiler.
 
-3. **Check ownership.** If the change touches Cargo, Clippy, rustfmt, Miri, or rust-analyzer, that's an external repo — fixes go there, not here.
+**3. Claim the issue**
+- Comment `@rustbot claim` on the issue (if rustbot is active there) so others know it's taken.
 
-4. **Set up the build.** Rustc-dev-guide's "building and running rustc" section covers `x` and `bootstrap.toml`.
+**4. Make the change + test**
+- Add/update a test — for compiler changes that's usually a `tests/ui/*.rs` file with a matching `.stderr`.
+- Run just the relevant test suite, e.g. `./x test tests/ui/<path>` rather than the whole suite.
 
-5. **Name a reviewer before any LLM-assisted edit.** Per this repo's CLAUDE.md, don't touch anything here (including test-only edits) until you've named someone other than you who's agreed to review it. Tell me who that is when you're ready to start.
+**5. Open the PR**
+- PR against `master`.
+- Expect a bot to assign a reviewer automatically.
+- CI takes a while; address review comments as new commits (squash isn't required mid-review).
 
-6. Once you know the issue/change and have a reviewer, the actual workflow is: failing test first → observe it fail → (soundness classification if it touches types/MIR/layout/codegen etc.) → implementation → test passes → `x fmt`/tidy → commit → confirm you've tested and reviewed the diff yourself before push → disclose LLM use in the PR description yourself.
-
-What are you looking to fix or add, and who's reviewing?
+Do you already have an issue or area in mind, or do you want help picking one (e.g. based on a language/tool you're comfortable with — compiler internals, rustdoc, clippy-adjacent lints, etc.)?

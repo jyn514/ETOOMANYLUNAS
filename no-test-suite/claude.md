@@ -1,17 +1,12 @@
 [Run metadata](claude.meta.json)
 
-
-❯ Esteban is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries.
+❯ Jieyouxu Hu is reviewing this. Pass `--ignore-libllvm` when `rustc_llvm` asks `llvm-config` for libraries.
 
 <details>
-<summary>⏺ Commands (2)</summary>
+<summary>⏺ Command</summary>
 
 ```console
-find . -path ./src/tools -prune -o -iname "build.rs" -print | xargs grep -l "llvm-config\|llvm_config" 2>/dev/null
-```
-
-```console
-grep -n "libnames\|libs\|--libnames\|ignore-libllvm\|fn output\|fn main\|llvm_config" ./compiler/rustc_llvm/build.rs | head -80
+grep -n "libs\|link-shared\|libnames\|system-libs\|components" compiler/rustc_llvm/build.rs | head -80
 ```
 
 </details>
@@ -21,33 +16,39 @@ grep -n "libnames\|libs\|--libnames\|ignore-libllvm\|fn output\|fn main\|llvm_co
 
 ```json
 {
-  "file_path": "$CHECKOUT/compiler/rustc_llvm/build.rs",
-  "offset": 300,
-  "limit": 140
+  "file_path": "compiler/rustc_llvm/build.rs",
+  "offset": 290,
+  "limit": 100
 }
 ```
 
 </details>
 
 <details>
-<summary>⏺ Commands (3)</summary>
+<summary>⏺ Commands (2)</summary>
 
 ```console
-grep -rn "ignore-libllvm\|ignore_libllvm" . --include=*.rs --include=*.md 2>/dev/null | grep -v "^Binary"
+grep -rn "ignore-libllvm\|ignore_libllvm" --include=*.rs --include=*.cpp --include=*.py . 2>/dev/null | grep -v "\.git"
 ```
 
 ```console
-grep -rln "ignore-libllvm" . 2>/dev/null; echo "---"; grep -rln "detect_llvm_link\|rustc_llvm/build" src/bootstrap tests 2>/dev/null | head -30
-```
-
-```console
-grep -rln "llvm-config" src/bootstrap/src 2>/dev/null; echo "---mocks---"; find . -iname "*mock*llvm*" -o -iname "*llvm*mock*" 2>/dev/null | grep -v "^./src/tools"
+grep -rn "ignore-libllvm" src/llvm-project/llvm/tools/llvm-config/ 2>/dev/null; find . -path ./.git -prune -o -name "llvm-config.cpp" -print 2>/dev/null
 ```
 
 </details>
 
-⏺ No mock/test harness exists for `rustc_llvm/build.rs`'s invocation of `llvm-config` — nothing fakes `llvm-config` output to observe which flags get passed to it. `compiler/rustc_llvm/build.rs` has no test suite at all; it only runs against a real `llvm-config` during an actual build.
+<details>
+<summary>⏺ Edit — <code>compiler/rustc_llvm/build.rs</code></summary>
 
-Per the Testing gate in CLAUDE.md: this requires either designing a new test suite (which is itself test-suite design — a PAUSE point, since it'd mean introducing a fake `llvm-config`/dependency-injection boundary) or abandoning the change as untested.
+```json
+{
+  "replace_all": false,
+  "file_path": "compiler/rustc_llvm/build.rs",
+  "old_string": "    let mut cmd = Command::new(&llvm_config);\n    cmd.arg(llvm_link_arg).arg(\"--libs\");\n\n    // Don't link system libs if cross-compiling unless targeting Windows from Windows host.",
+  "new_string": "    let mut cmd = Command::new(&llvm_config);\n    cmd.arg(llvm_link_arg).arg(\"--libs\");\n\n    // Make sure `--libs` reports the individual component libraries instead of\n    // a merged `libLLVM` shared library, even if one happens to be present in\n    // the LLVM build we're linking against.\n    cmd.arg(\"--ignore-libllvm\");\n\n    // Don't link system libs if cross-compiling unless targeting Windows from Windows host."
+}
+```
 
-**I need you to choose:** do you want to design a test suite for this (e.g., a fake `llvm-config` script the build script could be pointed at), or should this change be abandoned as untested? I can't proceed with the one-line `--ignore-libllvm` edit until that's decided — writing it untested isn't an option under the policy.
+</details>
+
+⏺ Added `--ignore-libllvm` to the `llvm-config --libs` invocation in `compiler/rustc_llvm/build.rs:339-345`, so it always requests individual component libraries rather than a merged `libLLVM` shared object when computing link libs.
