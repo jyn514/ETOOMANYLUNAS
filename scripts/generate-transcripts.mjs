@@ -6,6 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { clearInterval, setInterval } from "node:timers";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
@@ -144,6 +145,8 @@ function buildCodexCommand(run, turn, state) {
     "workspace-write",
     "--add-dir",
     run.bootstrapCachePath,
+    "--add-dir",
+    run.cargoHomePath,
     "--config",
     "sandbox_workspace_write.network_access=true",
   ];
@@ -186,8 +189,11 @@ function agentEnvironment(overrides = {}) {
   };
 }
 
-async function prepareRunEnvironment(provider, dryRun) {
-  if (dryRun || provider !== "codex") return { env: agentEnvironment(), cleanup: null };
+async function prepareRunEnvironment(run, dryRun) {
+  const sharedEnvironment = { CARGO_HOME: run.cargoHomePath };
+  if (dryRun || run.provider !== "codex") {
+    return { env: agentEnvironment(sharedEnvironment), cleanup: null };
+  }
 
   const codexHome = process.env.CODEX_HOME ?? path.join(homedir(), ".codex");
   const isolatedCodexHome = await mkdtemp(path.join(tmpdir(), "transcript-codex-home-"));
@@ -207,6 +213,7 @@ async function prepareRunEnvironment(provider, dryRun) {
 
   return {
     env: agentEnvironment({
+      ...sharedEnvironment,
       CODEX_HOME: isolatedCodexHome,
       CODEX_SQLITE_HOME: isolatedSqliteHome,
     }),
@@ -239,7 +246,7 @@ function renderDetails(out, label, language, body) {
 
 function stripLocalLinkTargets(text) {
   return text.replace(
-    /\[([^\]]+)]\(\s*(?:sandbox:)?\/(?:private|Users)\/[^)]*\)/g,
+    /\[([^\]]+)]\(\s*(?:(?:sandbox:|file:\/\/)?\$CHECKOUT|(?:sandbox:|file:\/\/)?\/(?:private|Users)\/)[^)]*\)/g,
     "$1",
   );
 }
@@ -250,7 +257,7 @@ function normalizeCheckoutPath(text, state) {
 }
 
 function renderedText(text, state) {
-  return normalizeCheckoutPath(stripLocalLinkTargets(text), state);
+  return stripLocalLinkTargets(normalizeCheckoutPath(text, state));
 }
 
 function escapeHtml(text) {
@@ -352,18 +359,32 @@ async function runCommand(
   env = process.env,
   progressLabel = null,
   onStdoutLine = null,
+  killDescendants = false,
 ) {
   if (dryRun) {
-    return { stdout: "", stderr: "", status: 0, dryRunCommand: [command, ...args].map(shellQuote).join(" ") };
+    return {
+      stdout: "",
+      stderr: "",
+      status: 0,
+      durationMs: 0,
+      dryRunCommand: [command, ...args].map(shellQuote).join(" "),
+    };
   }
 
   return await new Promise((resolve) => {
-    const child = spawn(command, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
+    const ownsProcessGroup = killDescendants && process.platform !== "win32";
+    const child = spawn(command, args, {
+      cwd,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: ownsProcessGroup,
+    });
     let stdout = "";
     let pendingStdout = "";
     let stderr = "";
     let lastOutputAt = Date.now();
     const startedAt = lastOutputAt;
+    let descendantCleanup = Promise.resolve();
 
     const heartbeat = setInterval(() => {
       if (!progressLabel) return;
@@ -394,14 +415,58 @@ async function runCommand(
     });
     child.on("error", (error) => {
       clearInterval(heartbeat);
-      resolve({ stdout, stderr: `${stderr}${error.message}\n`, status: 127, error });
+      resolve({ stdout, stderr: `${stderr}${error.message}\n`, status: 127, durationMs: Date.now() - startedAt, error });
     });
-    child.on("close", (status) => {
+    child.on("exit", () => {
+      if (ownsProcessGroup) descendantCleanup = terminateProcessGroup(child.pid);
+    });
+    child.on("close", (status, signal) => {
       clearInterval(heartbeat);
-      if (onStdoutLine && pendingStdout) onStdoutLine(pendingStdout);
-      resolve({ stdout, stderr, status });
+      descendantCleanup.then(
+        () => {
+          if (onStdoutLine && pendingStdout) onStdoutLine(pendingStdout);
+          resolve({ stdout, stderr, status, signal, durationMs: Date.now() - startedAt });
+        },
+        (error) => {
+          resolve({
+            stdout,
+            stderr: `${stderr}${error.message}\n`,
+            status: status && status !== 0 ? status : 1,
+            signal,
+            durationMs: Date.now() - startedAt,
+            error,
+          });
+        },
+      );
     });
   });
+}
+
+function processGroupExists(pid) {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch (error) {
+    if (error.code === "ESRCH") return false;
+    throw error;
+  }
+}
+
+async function terminateProcessGroup(pid) {
+  if (!pid || !processGroupExists(pid)) return;
+  try {
+    process.kill(-pid, "SIGTERM");
+  } catch (error) {
+    if (error.code !== "ESRCH") throw error;
+    return;
+  }
+  await delay(100);
+  if (!processGroupExists(pid)) return;
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch (error) {
+    if (error.code !== "ESRCH") throw error;
+  }
 }
 
 function commandText(command) {
@@ -912,6 +977,7 @@ async function runScenario(run, args, workerCheckout = null) {
   fixtureLinks.push(`[Run metadata](${run.provider}.meta.json)`);
   const transcript = [fixtureLinks.join(" · "), ""];
   const dryRunCommands = [];
+  const turnResults = [];
   const state = {
     turnIndex: 0,
     threadId: null,
@@ -921,7 +987,7 @@ async function runScenario(run, args, workerCheckout = null) {
     commands: [],
     checkoutPaths: [],
   };
-  const runEnvironment = await prepareRunEnvironment(run.provider, args.dryRun);
+  const runEnvironment = await prepareRunEnvironment(run, args.dryRun);
   let runCheckout = workerCheckout;
 
   try {
@@ -993,7 +1059,14 @@ async function runScenario(run, args, workerCheckout = null) {
         runCheckout.env,
         args.progress && !args.dryRun ? progressLabel : null,
         args.dryRun ? null : collectOutputLine,
+        !args.dryRun,
       );
+      turnResults.push({
+        turn: turnIndex + 1,
+        status: result.status,
+        duration_ms: result.durationMs,
+        ...(result.signal === null || result.signal === undefined ? {} : { signal: result.signal }),
+      });
       flushCommands(transcript, state);
       if (result.dryRunCommand) dryRunCommands.push(result.dryRunCommand);
       if (args.dryRun && run.provider === "codex" && !state.threadId) {
@@ -1034,13 +1107,14 @@ async function runScenario(run, args, workerCheckout = null) {
       path.join(outDir, `${run.provider}.meta.json`),
       `${JSON.stringify(
         {
-          version: 1,
+          version: 2,
           generated_at: new Date().toISOString(),
           provider: run.provider,
           model: PROVIDER_MODELS[run.provider],
           provider_version: args.providerVersions[run.provider],
           harness_revision: args.harnessRevision,
           rust_revision: args.inputRevision,
+          turns: turnResults,
           ...(args.reviewer === null ? {} : { reviewer: args.reviewer }),
         },
         null,
@@ -1221,10 +1295,16 @@ async function main() {
   args.bootstrapCachePath = path.resolve(
     process.env.TRANSCRIPTS_BOOTSTRAP_CACHE ?? path.join(cacheRoot, "definitely-not-rust", "bootstrap"),
   );
+  args.cargoHomePath = path.resolve(
+    process.env.TRANSCRIPTS_CARGO_HOME ?? path.join(cacheRoot, "definitely-not-rust", "cargo"),
+  );
   args.inputRevision = "$INPUT_REVISION";
   args.submodulePaths = TRANSCRIPT_SUBMODULES;
   if (!args.dryRun) {
-    await mkdir(args.bootstrapCachePath, { recursive: true });
+    await Promise.all([
+      mkdir(args.bootstrapCachePath, { recursive: true }),
+      mkdir(args.cargoHomePath, { recursive: true }),
+    ]);
     const rustRepoStat = await stat(args.rustRepo).catch(() => null);
     if (!rustRepoStat?.isDirectory()) throw new Error(`--rust-repo is not a directory: ${args.rustRepo}`);
     const gitCheck = await runCommand(
@@ -1243,7 +1323,12 @@ async function main() {
   }
 
   const runs = scenarios.flatMap((scenario) =>
-    args.providers.map((provider) => ({ ...scenario, provider, bootstrapCachePath: args.bootstrapCachePath })),
+    args.providers.map((provider) => ({
+      ...scenario,
+      provider,
+      bootstrapCachePath: args.bootstrapCachePath,
+      cargoHomePath: args.cargoHomePath,
+    })),
   );
   args.useCheckoutTemplate = runs.length > 1 && args.submodulePaths.length > 0;
   const template = await prepareCheckoutTemplate(args, agentEnvironment());

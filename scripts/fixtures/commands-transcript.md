@@ -16,7 +16,7 @@ printf '```'
 
 </details>
 
-⏺ commands|command|Fixture commands|true|base,missing,missing|cargo-target-unset=true
+⏺ commands|command|Fixture commands|true|base,missing,missing|cargo-target-unset=true|cargo-home-writable=true
 
 ⏺ Edit(src/file.rs)
 

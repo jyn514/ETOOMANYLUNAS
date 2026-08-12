@@ -100,7 +100,7 @@ async function makeFixtureTemplate(t) {
     fakeCodex,
     `#!/usr/bin/env node
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 if (process.argv.includes("--version")) {
   console.log("fake-codex 1.0");
   process.exit(0);
@@ -115,6 +115,18 @@ const callerState = ["base.txt", "AGENTS.md", ".claude/rules.md"]
 const sqliteIsIsolated =
   process.env.CODEX_SQLITE_HOME === process.env.CODEX_HOME + ${JSON.stringify(path.sep)} + "sqlite";
 const cargoTargetDirIsUnset = !("CARGO_TARGET_DIR" in process.env);
+let cargoHomeIsWritable = false;
+try {
+  writeFileSync(process.env.CARGO_HOME + ${JSON.stringify(path.sep)} + "write-check", "ok");
+  cargoHomeIsWritable = true;
+} catch {}
+if (process.env.DESCENDANT_PID_FILE) {
+  const descendant = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+    stdio: "ignore",
+  });
+  descendant.unref();
+  writeFileSync(process.env.DESCENDANT_PID_FILE, String(descendant.pid));
+}
 writeFileSync("agent-change.txt", fixture);
 console.log(JSON.stringify({ type: "thread.started", thread_id: "fixture-thread" }));
 if (process.env.EMIT_COMMANDS === "1") {
@@ -131,7 +143,7 @@ console.log(JSON.stringify({
   type: "item.completed",
   item: {
     type: "agent_message",
-    text: [fixture, command, subject, sqliteIsIsolated, callerState, \`cargo-target-unset=\${cargoTargetDirIsUnset}\`].join("|")
+    text: [fixture, command, subject, sqliteIsIsolated, callerState, \`cargo-target-unset=\${cargoTargetDirIsUnset}\`, \`cargo-home-writable=\${cargoHomeIsWritable}\`].join("|")
   }
 }));
 if (process.env.EMIT_LOCAL_LINK === "1") {
@@ -139,7 +151,7 @@ if (process.env.EMIT_LOCAL_LINK === "1") {
     type: "item.completed",
     item: {
       type: "agent_message",
-      text: "Read [the file](sandbox:/private/tmp/transcript-worktree/checkout/src/file.rs#L4)."
+      text: "Read [sandbox](sandbox:/private/tmp/transcript-worktree/checkout/src/file.rs#L4), [file](file://" + process.cwd() + "/src/file.rs#L4), and [checkout](" + process.cwd() + "/src/file.rs#L4)."
     }
   }));
 }
@@ -283,6 +295,11 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
   const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "reviewed", "codex.meta.json"), "utf8"));
   assert.equal(metadata.reviewer, "Esteban");
   assert.equal(metadata.rust_revision, rustRevision);
+  assert.equal(metadata.version, 2);
+  assert.equal(metadata.turns.length, 1);
+  assert.equal(metadata.turns[0].turn, 1);
+  assert.equal(metadata.turns[0].status, 0);
+  assert.equal(Number.isInteger(metadata.turns[0].duration_ms), true);
   const transcript = await readFile(path.join(fixture.scenarios, "linked", "codex.md"), "utf8");
   assert.match(
     transcript,
@@ -297,13 +314,14 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
   assert.match(await readFile(path.join(fixture.scenarios, "parallel-alpha", "codex.md"), "utf8"), /parallel-alpha\|command\|Fixture parallel-alpha\|true/);
   assert.match(await readFile(path.join(fixture.scenarios, "parallel-beta", "codex.md"), "utf8"), /parallel-beta\|command\|Fixture parallel-beta\|true/);
   assert.match(await readFile(path.join(fixture.scenarios, "parallel-alpha", "codex.md"), "utf8"), /cargo-target-unset=true/);
+  assert.match(await readFile(path.join(fixture.scenarios, "parallel-alpha", "codex.md"), "utf8"), /cargo-home-writable=true/);
   assert.match(result.stderr, /⏺ live\|command\|Fixture live\|true/);
   const liveTranscript = await readFile(path.join(fixture.scenarios, "live", "codex.md"), "utf8");
   assert.equal(liveTranscript.match(/live\|command\|Fixture live\|true/g)?.length, 1);
   const localLinkTranscript = await readFile(path.join(fixture.scenarios, "local-link", "codex.md"), "utf8");
-  assert.match(localLinkTranscript, /Read the file\./);
-  assert.match(localLinkTranscript, /cargo-target-unset=true\n\n⏺ Read the file\./);
-  assert.doesNotMatch(localLinkTranscript, /sandbox:|transcript-worktree/);
+  assert.match(localLinkTranscript, /Read sandbox, file, and checkout\./);
+  assert.match(localLinkTranscript, /cargo-home-writable=true\n\n⏺ Read sandbox, file, and checkout\./);
+  assert.doesNotMatch(localLinkTranscript, /sandbox:|file:\/\/|transcript-worktree|\$CHECKOUT/);
   assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
   await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
@@ -324,7 +342,7 @@ test("reviewer placeholders require --reviewer", async (t) => {
   assert.match(result.stderr, /--reviewer is required by scenario: reviewed/);
 });
 
-function runGenerator({ scenarios, rustRepo, codexHome, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
+function runGenerator({ root, scenarios, rustRepo, codexHome, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
   return executeAsync(
     process.execPath,
     [
@@ -338,7 +356,14 @@ function runGenerator({ scenarios, rustRepo, codexHome, fakeCodex, runner, extra
     ],
     {
       cwd: scenarios,
-      env: { ...process.env, CODEX_BIN: fakeCodex, CODEX_HOME: codexHome, ...extraEnv },
+      env: {
+        ...process.env,
+        CODEX_BIN: fakeCodex,
+        CODEX_HOME: codexHome,
+        TRANSCRIPTS_BOOTSTRAP_CACHE: path.join(root, "bootstrap-cache"),
+        TRANSCRIPTS_CARGO_HOME: path.join(root, "cargo-home"),
+        ...extraEnv,
+      },
     },
   );
 }
@@ -371,6 +396,23 @@ test("a worker reuses its clean checkout between scenarios", async (t) => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(await readFile(path.join(fixture.scenarios, "beta", "codex.md"), "utf8"), /beta\|command\|Fixture beta/);
+});
+
+test("provider descendants are terminated before a worker checkout is reused", async (t) => {
+  const fixture = await makeFixture(t);
+  const descendantPidFile = path.join(fixture.root, "descendant-pid");
+  await writeScenario(fixture.scenarios, "alpha");
+  await writeScenario(fixture.scenarios, "beta");
+
+  const result = await runGenerator({
+    ...fixture,
+    extraArgs: ["--jobs", "1"],
+    extraEnv: { DESCENDANT_PID_FILE: descendantPidFile },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const descendantPid = Number(await readFile(descendantPidFile, "utf8"));
+  assert.throws(() => process.kill(descendantPid, 0), { code: "ESRCH" });
 });
 
 test("runs include current agent instructions but not unrelated checkout changes", async (t) => {
@@ -441,6 +483,10 @@ test("a provider failure is recorded and its worktree is removed", async (t) => 
     await readFile(path.join(fixture.scenarios, "provider-failure", "codex.md"), "utf8"),
     /codex exited with status 7/,
   );
+  const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "provider-failure", "codex.meta.json"), "utf8"));
+  assert.equal(metadata.turns.length, 1);
+  assert.equal(metadata.turns[0].status, 7);
+  assert.equal(Number.isInteger(metadata.turns[0].duration_ms), true);
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
 });
 
