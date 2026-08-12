@@ -9,3 +9,15 @@ prefix_rule(
     decision = "allow",
     justification = "The scenario runs in a disposable clone with independent Git metadata.",
 )
+
+prefix_rule(
+    pattern = ["gh", "issue", "view"],
+    decision = "allow",
+    justification = "Read-only issue lookup for transcript scenarios.",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["diff", "checks", "list", "status", "view"]],
+    decision = "allow",
+    justification = "Read-only pull request lookup for transcript scenarios.",
+)

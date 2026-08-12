@@ -77,6 +77,7 @@ async function makeFixtureTemplate(t) {
   await mkdir(path.join(scenarios, "scripts"));
   const runner = path.join(scenarios, "scripts", "generate-transcripts.mjs");
   await copyFile(path.join(sourceScripts, "generate-transcripts.mjs"), runner);
+  await copyFile(path.join(sourceScripts, "claude-settings.json"), path.join(scenarios, "scripts", "claude-settings.json"));
   await copyFile(path.join(sourceScripts, "transcript.rules"), path.join(scenarios, "scripts", "transcript.rules"));
   git(scenarios, "init");
   git(scenarios, "config", "user.name", "Test User");
@@ -169,7 +170,37 @@ if (process.env.EMIT_COMMANDS === "1") {
   );
   await chmod(fakeCodex, 0o755);
 
-  return { root, rustRepo, scenarios, codexHome, fakeCodex, runner };
+  const fakeClaude = path.join(root, "fake-claude.mjs");
+  await writeFile(
+    fakeClaude,
+    `#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("fake-claude 1.0");
+  process.exit(0);
+}
+const settingsIndex = process.argv.indexOf("--settings");
+console.log(JSON.stringify({
+  type: "assistant",
+  message: { content: [{
+    type: "text",
+    text: JSON.stringify({
+      configDir: process.env.CLAUDE_CONFIG_DIR,
+      settingSources: process.argv[process.argv.indexOf("--setting-sources") + 1],
+      globalInstructionsExcluded: JSON.parse(process.argv[settingsIndex + 1]).claudeMdExcludes.includes(
+        process.env.CLAUDE_CONFIG_DIR + "/CLAUDE.md",
+      ),
+      ghIssueAllowed: JSON.parse(process.argv[settingsIndex + 1]).permissions.allow.includes("Bash(gh issue view *)"),
+      slashCommandsDisabled: process.argv.includes("--disable-slash-commands"),
+      strictMcp: process.argv.includes("--strict-mcp-config"),
+    }),
+  }] },
+}));
+console.log(JSON.stringify({ type: "result", subtype: "success", result: "done" }));
+`,
+  );
+  await chmod(fakeClaude, 0o755);
+
+  return { root, rustRepo, scenarios, codexHome, fakeClaude, fakeCodex, runner };
 }
 
 async function makeFixture(t) {
@@ -193,6 +224,7 @@ async function makeFixture(t) {
     rustRepo,
     scenarios,
     codexHome,
+    fakeClaude: fixtureTemplate.fakeClaude,
     fakeCodex: fixtureTemplate.fakeCodex,
     runner: path.join(scenarios, "scripts", "generate-transcripts.mjs"),
   };
@@ -342,7 +374,18 @@ test("reviewer placeholders require --reviewer", async (t) => {
   assert.match(result.stderr, /--reviewer is required by scenario: reviewed/);
 });
 
-function runGenerator({ root, scenarios, rustRepo, codexHome, fakeCodex, runner, extraArgs = [], extraEnv = {} }) {
+function runGenerator({
+  root,
+  scenarios,
+  rustRepo,
+  codexHome,
+  fakeClaude,
+  fakeCodex,
+  runner,
+  provider = "codex",
+  extraArgs = [],
+  extraEnv = {},
+}) {
   return executeAsync(
     process.execPath,
     [
@@ -350,7 +393,7 @@ function runGenerator({ root, scenarios, rustRepo, codexHome, fakeCodex, runner,
       "--rust-repo",
       rustRepo,
       "--provider",
-      "codex",
+      provider,
       "--no-progress",
       ...extraArgs,
     ],
@@ -360,6 +403,7 @@ function runGenerator({ root, scenarios, rustRepo, codexHome, fakeCodex, runner,
         ...process.env,
         CODEX_BIN: fakeCodex,
         CODEX_HOME: codexHome,
+        CLAUDE_BIN: fakeClaude,
         TRANSCRIPTS_BOOTSTRAP_CACHE: path.join(root, "bootstrap-cache"),
         TRANSCRIPTS_CARGO_HOME: path.join(root, "cargo-home"),
         ...extraEnv,
@@ -367,6 +411,30 @@ function runGenerator({ root, scenarios, rustRepo, codexHome, fakeCodex, runner,
     },
   );
 }
+
+test("Claude runs preserve auth location without loading caller customization", async (t) => {
+  const fixture = await makeFixture(t);
+  const claudeConfigDir = path.join(fixture.root, "claude-config");
+  await mkdir(claudeConfigDir);
+  await writeScenario(fixture.scenarios, "claude-isolation");
+
+  const result = await runGenerator({
+    ...fixture,
+    provider: "claude",
+    extraEnv: { CLAUDE_CONFIG_DIR: claudeConfigDir },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    await readFile(path.join(fixture.scenarios, "claude-isolation", "claude.md"), "utf8"),
+    new RegExp(
+      `"configDir":"${claudeConfigDir}",` +
+      `"settingSources":"project,local",` +
+      `"globalInstructionsExcluded":true,"ghIssueAllowed":true,` +
+      `"slashCommandsDisabled":true,"strictMcp":true`,
+    ),
+  );
+});
 
 test("a scenario cannot be selected and skipped", async (t) => {
   const fixture = await makeFixture(t);

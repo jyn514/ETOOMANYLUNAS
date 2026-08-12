@@ -42,8 +42,12 @@ checkout, including uncommitted and non-ignored untracked files:
 - `.codex`
 - `.agents`
 
-It excludes other checkout changes and the caller's global instructions
-(`~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`).
+It excludes other checkout changes and the caller's global configuration.
+Claude retains its authenticated config directory but disables user settings,
+instructions, skills, and MCP servers through CLI controls. Codex receives a
+temporary `CODEX_HOME` without global instructions, rules, or session state.
+Provider-specific read-only command permissions live in
+`scripts/claude-settings.json` and `scripts/transcript.rules`.
 
 Each scenario/provider run receives an independent disposable shared Git clone
 with writable Git metadata. Rust's `x` commands and local commits cannot mutate

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
@@ -17,6 +18,9 @@ const PROVIDER_MODELS = {
   codex: "gpt-5.4-mini",
 };
 const TRANSCRIPT_SUBMODULES = ["library/backtrace", "src/tools/cargo"];
+const CLAUDE_SCENARIO_SETTINGS = JSON.parse(
+  readFileSync(new URL("claude-settings.json", import.meta.url), "utf8"),
+);
 
 function usage() {
   console.error(`Usage:
@@ -110,12 +114,17 @@ async function runProgressStep(enabled, label, operation) {
 function buildClaudeCommand(run, turn, state) {
   const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(homedir(), ".claude");
   const settings = JSON.stringify({
+    ...CLAUDE_SCENARIO_SETTINGS,
     claudeMdExcludes: [path.join(claudeConfigDir, "CLAUDE.md")],
   });
   const args = [
     "-p",
     "--settings",
     settings,
+    "--setting-sources",
+    "project,local",
+    "--disable-slash-commands",
+    "--strict-mcp-config",
     "--allowedTools",
     "WebFetch,WebSearch",
     "--output-format",
