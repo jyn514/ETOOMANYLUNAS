@@ -1,9 +1,10 @@
 {
   "version": 1,
-  "generated_at": "2026-07-26T22:05:08.677Z",
+  "generated_at": "2026-08-12T09:45:32.881Z",
   "provider": "codex",
   "model": "gpt-5.4-mini",
-  "provider_version": "codex-cli 0.144.6",
-  "harness_revision": "8f2b740963070fbc32c93ce6a3449c3819c7ea0b",
-  "rust_revision": "fb09f7fc95d4023499162d9699675c9f90b23ebc"
+  "provider_version": "codex-cli 0.147.0",
+  "harness_revision": "137f9e6a54177233c5ae1c96af0b118510a0809b",
+  "rust_revision": "4513c28a2a5ed221fd09e5ffb539a503130c6423",
+  "reviewer": "Jack Huey"
 }

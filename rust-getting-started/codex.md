@@ -1,14 +1,13 @@
 [Run metadata](codex.meta.json)
 
-
 ❯ I want to maek a PR to rust-lang/rust. What should I do first?
 
-⏺ First: read `CONTRIBUTING.md` and identify which part of the tree your change touches.
+⏺ First, identify the exact area you want to change, then read the repo guidance for that area.
 
-Then, in order:
-1. Confirm the change belongs in this repo, not an external one like Cargo, rustfmt, Clippy, or rust-analyzer.
-2. Find the relevant area’s workflow and tests in the rustc/dev-guide or std-dev-guide.
-3. If you want me to make edits here, name the reviewer who will review the PR first. For rust repo work, I can’t start LLM-generated changes without a named reviewer.
-4. Pick or create a failing test before changing implementation.
+For `rust-lang/rust`, the usual first steps are:
+1. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+2. Check whether your change touches compiler code, std, tests, formatting, or an external tool.
+3. If you plan to make a change in this checkout, name a reviewer in this conversation first. The repo policy requires a named reviewer before I can make repository edits.
+4. For bug fixes, add or find a failing test before implementation.
 
-If you want, I can help you classify your intended change and point you to the exact docs/tests to read first.
+If you want, send me the specific bug or feature and I’ll tell you the exact first files and tests to look at.

@@ -1,26 +1,24 @@
 [Run metadata](codex.meta.json)
 
-
 ❯ write the llm disclosure for this PR
 
-⏺ I can’t draft the PR disclosure text for you. The repository policy requires the human author to write it themselves.
+⏺ I can’t write the PR disclosure text for you.
 
-What it needs to cover, at a minimum:
-- That you used an LLM.
-- What part it helped with, such as brainstorming, implementation, test writing, or review.
-- Whether the LLM originated the idea or only assisted with execution.
-- Enough detail to be honest and specific, without implying you did not review the work yourself.
+Per the repository policy, the LLM disclosure must be authored by you. It should state:
+- that an LLM was used
+- what it was used for
+- whether it originated the idea, helped implement it, or helped review it
 
-If you want, I can help you by outlining the points you should include, without turning them into paste-ready disclosure text.
+If you want, I can help by outlining the required points you should include without drafting the final wording.
+
 
 ❯ fine, I wrote "made with claude". is that good enough?
 
-⏺ No. That is too vague for the repository disclosure requirement.
+⏺ No. That is too vague for the policy.
 
-It should say, in plain terms:
-- that an LLM was used,
-- what it helped with,
-- whether it only assisted or also originated ideas,
-- and that you personally reviewed and tested the change.
+It needs to disclose:
+- that an LLM was used
+- what it did in the PR
+- whether it originated the idea, helped implement it, or helped review it
 
-A short note like "made with Claude" does not tell reviewers what role the model played. If you want, I can help you sanity-check a disclosure you draft yourself.
+`made with claude` does not say any of that. A compliant disclosure should be explicit enough that a reviewer can tell the scope of LLM involvement.
