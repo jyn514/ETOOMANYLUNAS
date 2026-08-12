@@ -44,8 +44,10 @@ checkout, including uncommitted and non-ignored untracked files:
 
 It excludes other checkout changes and the caller's global configuration.
 Claude retains its authenticated config directory but disables user settings,
-instructions, skills, and MCP servers through CLI controls. Codex receives a
-temporary `CODEX_HOME` without global instructions, rules, or session state.
+instructions, skills, and MCP servers through CLI controls. Its harness settings
+permit edits and automatically approve Bash only inside a mandatory sandbox;
+unsandboxed commands are forbidden. Codex receives a temporary `CODEX_HOME`
+without global instructions, rules, or session state.
 Provider-specific read-only command permissions live in
 `scripts/claude-settings.json` and `scripts/transcript.rules`.
 

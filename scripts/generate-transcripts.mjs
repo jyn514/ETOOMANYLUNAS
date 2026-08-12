@@ -115,6 +115,13 @@ function buildClaudeCommand(run, turn, state) {
   const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(homedir(), ".claude");
   const settings = JSON.stringify({
     ...CLAUDE_SCENARIO_SETTINGS,
+    sandbox: {
+      ...CLAUDE_SCENARIO_SETTINGS.sandbox,
+      filesystem: {
+        ...CLAUDE_SCENARIO_SETTINGS.sandbox.filesystem,
+        allowWrite: [run.bootstrapCachePath, run.cargoHomePath],
+      },
+    },
     claudeMdExcludes: [path.join(claudeConfigDir, "CLAUDE.md")],
   });
   const args = [
@@ -125,6 +132,8 @@ function buildClaudeCommand(run, turn, state) {
     "project,local",
     "--disable-slash-commands",
     "--strict-mcp-config",
+    "--permission-mode",
+    "acceptEdits",
     "--allowedTools",
     "WebFetch,WebSearch",
     "--output-format",

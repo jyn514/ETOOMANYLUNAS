@@ -7,6 +7,13 @@
       "Bash(gh pr list *)",
       "Bash(gh pr status *)",
       "Bash(gh pr view *)"
-    ]
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "failIfUnavailable": true
   }
 }

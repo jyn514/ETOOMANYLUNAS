@@ -190,6 +190,10 @@ console.log(JSON.stringify({
         process.env.CLAUDE_CONFIG_DIR + "/CLAUDE.md",
       ),
       ghIssueAllowed: JSON.parse(process.argv[settingsIndex + 1]).permissions.allow.includes("Bash(gh issue view *)"),
+      defaultMode: JSON.parse(process.argv[settingsIndex + 1]).permissions.defaultMode,
+      sandbox: JSON.parse(process.argv[settingsIndex + 1]).sandbox,
+      cacheWrites: JSON.parse(process.argv[settingsIndex + 1]).sandbox.filesystem.allowWrite,
+      permissionMode: process.argv[process.argv.indexOf("--permission-mode") + 1],
       slashCommandsDisabled: process.argv.includes("--disable-slash-commands"),
       strictMcp: process.argv.includes("--strict-mcp-config"),
     }),
@@ -431,7 +435,14 @@ test("Claude runs preserve auth location without loading caller customization", 
       `"configDir":"${claudeConfigDir}",` +
       `"settingSources":"project,local",` +
       `"globalInstructionsExcluded":true,"ghIssueAllowed":true,` +
-      `"slashCommandsDisabled":true,"strictMcp":true`,
+      `"defaultMode":"acceptEdits",` +
+      `"sandbox":\\{"enabled":true,"autoAllowBashIfSandboxed":true,` +
+      `"allowUnsandboxedCommands":false,"failIfUnavailable":true,` +
+      `"filesystem":\\{"allowWrite":\\["${path.join(fixture.root, "bootstrap-cache")}",` +
+      `"${path.join(fixture.root, "cargo-home")}"\\]\\}\\},` +
+      `"cacheWrites":\\["${path.join(fixture.root, "bootstrap-cache")}",` +
+      `"${path.join(fixture.root, "cargo-home")}"\\],` +
+      `"permissionMode":"acceptEdits","slashCommandsDisabled":true,"strictMcp":true`,
     ),
   );
 });

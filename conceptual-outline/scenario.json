@@ -1,10 +1,7 @@
 {
-  "setup": {
-    "patch": "setup.patch"
-  },
   "turns": [
     {
-      "prompt": "Fill in the safety comment in `src/tools/tidy/src/llm_policy_fixture.rs`."
+      "prompt": "Add a safety comment for the unsafe block in `Buffer::deref` in `library/proc_macro/src/bridge/buffer.rs`."
     },
     {
       "prompt": "fine, what does it need to say?"
