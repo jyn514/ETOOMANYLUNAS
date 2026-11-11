@@ -116,6 +116,9 @@ if (process.env.FAIL_PROVIDER === "1") process.exit(7);
 const fixture = existsSync("fixture.txt") ? readFileSync("fixture.txt", "utf8").trim() : "missing";
 const command = existsSync("command.txt") ? readFileSync("command.txt", "utf8").trim() : "missing";
 const subject = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
+if (process.env.REPORT_CODEX_HOME === "1") {
+  console.log(JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "codex_home=" + process.env.CODEX_HOME } }));
+}
 if (process.env.REPORT_SKILL === "1") {
   const skill = ".agents/skills/rust-issue-reporting/SKILL.md";
   console.log(JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "skill=" + (existsSync(skill) ? readFileSync(skill, "utf8").trim() : "missing") } }));
@@ -371,6 +374,19 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
   assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
   await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
+});
+
+test("isolated Codex homes use harness work storage and are cleaned up", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "home-location");
+  const result = await runGenerator({ ...fixture, extraEnv: { REPORT_CODEX_HOME: "1" } });
+  assert.equal(result.status, 0, result.stderr);
+  const transcript = await readFile(path.join(fixture.scenarios, "home-location/codex.md"), "utf8");
+  const home = transcript.match(/codex_home=([^\n]+)/)?.[1];
+  assert.ok(home, transcript);
+  const homeRoot = path.join(fixture.scenarios, "work", "codex-homes");
+  assert.equal(path.dirname(home), homeRoot);
+  assert.deepEqual(await readdir(homeRoot), []);
 });
 
 test("group-qualified scenarios keep distinct setup and output paths", async (t) => {

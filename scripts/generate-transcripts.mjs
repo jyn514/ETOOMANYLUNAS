@@ -216,7 +216,10 @@ async function prepareRunEnvironment(run, dryRun) {
   }
 
   const codexHome = process.env.CODEX_HOME ?? path.join(homedir(), ".codex");
-  const isolatedCodexHome = await mkdtemp(path.join(tmpdir(), "transcript-codex-home-"));
+  // Codex refuses to create PATH helpers in CODEX_HOME under the system temp directory.
+  const codexHomes = path.join(HARNESS_ROOT, "work", "codex-homes");
+  await mkdir(codexHomes, { recursive: true, mode: 0o700 });
+  const isolatedCodexHome = await mkdtemp(path.join(codexHomes, "run-"));
   const isolatedSqliteHome = path.join(isolatedCodexHome, "sqlite");
   const isolatedRulesDir = path.join(isolatedCodexHome, "rules");
   await symlinkChildrenExcept(
