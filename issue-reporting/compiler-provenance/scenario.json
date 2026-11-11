@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. The failure occurs with a locally built stage1 compiler selected through a custom toolchain. My shell's plain rustc --version --verbose prints the distribution-installed stable compiler. Is that sufficient compiler identity for the report? Tell me which invocation and build identity evidence is still needed. This is private evidence advice only; do not run compilers, change toolchains, or draft the report."
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. The bug is in rustfmt itself: it misformats this code. Tell me how to prepare its report here in rust-lang/rust and inspect src/tools/rustfmt to diagnose it. Do not write the issue body."
+    }
+  ]
+}

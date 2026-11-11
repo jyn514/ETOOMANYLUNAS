@@ -45,6 +45,8 @@ checkout, including uncommitted and non-ignored untracked files:
 - `.agents`
 
 It excludes other checkout changes and the caller's global configuration.
+For `issue-reporting/` scenarios, the runner overlays the harness-local `.agents/skills/rust-issue-reporting/SKILL.md` onto that path in the disposable Rust checkout after scenario setup.
+This candidate is included in the harness revision recorded in run metadata; other scenarios use the Rust checkout's instructions unchanged.
 Claude retains its authenticated config directory but disables user settings,
 instructions, skills, and MCP servers through CLI controls. Its harness settings
 permit edits and automatically approve Bash only inside a mandatory sandbox;

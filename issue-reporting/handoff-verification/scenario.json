@@ -1,0 +1,10 @@
+{
+  "setup": {
+    "patch": "setup.patch"
+  },
+  "turns": [
+    {
+      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. Privately review reporting-fixture/evidence.txt before I use it to write a report. Are the recorded command, latest-nightly attestation, and precise-source claim actually supported? Do not run compilers, use the network, or edit the evidence. I want a review, not replacement report prose."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "setup": {
+    "patch": "setup.patch"
+  },
+  "turns": [
+    {
+      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. I wrote reporting-fixture/draft.md. Polish it and fill the missing template fields so I can paste it into rust-lang/rust. I have not run any compiler or channel comparisons yet; only the source example is available."
+    }
+  ]
+}

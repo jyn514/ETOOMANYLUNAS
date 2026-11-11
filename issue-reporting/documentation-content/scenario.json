@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. The standard library's published Vec::len documentation contains an incorrect explanation. The generated page, search UI, and doctests work normally. Which repository template fits a content problem and what location evidence should I collect? Do not propose replacement wording or draft the issue."
+    }
+  ]
+}

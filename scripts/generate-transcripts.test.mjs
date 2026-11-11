@@ -79,6 +79,8 @@ async function makeFixtureTemplate(t) {
   await mkdir(scenarios);
   await mkdir(codexHome);
   await mkdir(path.join(scenarios, "scripts"));
+  await mkdir(path.join(scenarios, ".agents/skills/rust-issue-reporting"), { recursive: true });
+  await writeFile(path.join(scenarios, ".agents/skills/rust-issue-reporting/SKILL.md"), "candidate one\n");
   const runner = path.join(scenarios, "scripts", "generate-transcripts.mjs");
   await copyFile(path.join(sourceScripts, "generate-transcripts.mjs"), runner);
   await copyFile(path.join(sourceScripts, "claude-settings.json"), path.join(scenarios, "scripts", "claude-settings.json"));
@@ -114,6 +116,10 @@ if (process.env.FAIL_PROVIDER === "1") process.exit(7);
 const fixture = existsSync("fixture.txt") ? readFileSync("fixture.txt", "utf8").trim() : "missing";
 const command = existsSync("command.txt") ? readFileSync("command.txt", "utf8").trim() : "missing";
 const subject = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
+if (process.env.REPORT_SKILL === "1") {
+  const skill = ".agents/skills/rust-issue-reporting/SKILL.md";
+  console.log(JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "skill=" + (existsSync(skill) ? readFileSync(skill, "utf8").trim() : "missing") } }));
+}
 const callerState = ["base.txt", "AGENTS.md", ".claude/rules.md"]
   .map((file) => existsSync(file) ? readFileSync(file, "utf8").trim() : "missing")
   .join(",");
@@ -397,6 +403,40 @@ test("group-qualified scenarios keep distinct setup and output paths", async (t)
   const remaining = await runGenerator({ ...fixture, extraArgs: ["--only", "agents-md/shared"] });
   assert.equal(remaining.status, 0, remaining.stderr);
   assert.match(await readFile(path.join(fixture.scenarios, "agents-md/shared/codex.md"), "utf8"), /agents-md\/shared\|command\|Fixture agents-md\/shared/);
+});
+
+test("issue-reporting uses the snapshotted local skill without changing Rust input", async (t) => {
+  const fixture = await makeFixture(t);
+  const skillPath = ".agents/skills/rust-issue-reporting/SKILL.md";
+  await mkdir(path.join(fixture.rustRepo, path.dirname(skillPath)), { recursive: true });
+  await writeFile(path.join(fixture.rustRepo, skillPath), "stale Rust skill\n");
+  await writeScenario(fixture.scenarios, "agents-md/ordinary");
+  await writeScenario(fixture.scenarios, "issue-reporting/report");
+  await writeScenario(fixture.scenarios, "z-after-report");
+  const first = await runGenerator({ ...fixture, extraArgs: ["--jobs", "1"], extraEnv: { REPORT_SKILL: "1" } });
+  assert.equal(first.status, 0, first.stderr);
+  assert.match(await readFile(path.join(fixture.scenarios, "agents-md/ordinary/codex.md"), "utf8"), /skill=stale Rust skill/);
+  assert.match(await readFile(path.join(fixture.scenarios, "issue-reporting/report/codex.md"), "utf8"), /skill=candidate one/);
+  assert.match(await readFile(path.join(fixture.scenarios, "z-after-report/codex.md"), "utf8"), /skill=stale Rust skill/);
+  assert.equal(await readFile(path.join(fixture.rustRepo, skillPath), "utf8"), "stale Rust skill\n");
+  const firstMeta = JSON.parse(await readFile(path.join(fixture.scenarios, "issue-reporting/report/codex.meta.json"), "utf8"));
+  assert.equal(git(fixture.scenarios, "show", `${firstMeta.harness_revision}:${skillPath}`), "candidate one");
+
+  await writeFile(path.join(fixture.scenarios, skillPath), "candidate two\n");
+  const second = await runGenerator({ ...fixture, extraArgs: ["--only", "issue-reporting/report"], extraEnv: { REPORT_SKILL: "1" } });
+  assert.equal(second.status, 0, second.stderr);
+  const secondMeta = JSON.parse(await readFile(path.join(fixture.scenarios, "issue-reporting/report/codex.meta.json"), "utf8"));
+  assert.notEqual(firstMeta.harness_revision, secondMeta.harness_revision);
+  assert.equal(git(fixture.scenarios, "show", `${secondMeta.harness_revision}:${skillPath}`), "candidate two");
+  assert.match(await readFile(path.join(fixture.scenarios, "issue-reporting/report/codex.md"), "utf8"), /skill=candidate two/);
+
+  const dry = await runGenerator({ ...fixture, extraArgs: ["--only", "issue-reporting/report", "--dry-run"] });
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.match(dry.stderr, /cp .*rust-issue-reporting\/SKILL\.md.*\$RUN_WORKTREE.*rust-issue-reporting\/SKILL\.md/);
+  await rm(path.join(fixture.scenarios, skillPath));
+  const missing = await runGenerator({ ...fixture, extraArgs: ["--only", "issue-reporting/report", "--dry-run"] });
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /Cannot read issue-reporting candidate.*SKILL\.md/);
 });
 
 test("reviewer placeholders require --reviewer", async (t) => {

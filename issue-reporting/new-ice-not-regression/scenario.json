@@ -1,0 +1,7 @@
+{
+  "turns": [
+    {
+      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. I got an internal compiler error today while compiling an old crate with a nightly toolchain. I have not tested any other compiler version. Which rust-lang/rust issue template should I use, and which version evidence should I collect? This is only a request for template selection and an evidence checklist, not issue prose or a runtime investigation."
+    }
+  ]
+}

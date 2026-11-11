@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
@@ -12,6 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ISSUE_REPORTING_SKILL = ".agents/skills/rust-issue-reporting/SKILL.md";
 
 const PROVIDER_MODELS = {
   claude: "claude-sonnet-5",
@@ -605,6 +606,7 @@ async function snapshotHarnessRevision(args, scenarios, env) {
   if (args.dryRun) return "$HARNESS_REVISION";
 
   const inputPaths = new Set(["scripts/generate-transcripts.mjs", "scripts/transcript.rules"]);
+  if (scenarios.some((scenario) => scenario.name.startsWith("issue-reporting/"))) inputPaths.add(ISSUE_REPORTING_SKILL);
   for (const scenario of scenarios) {
     inputPaths.add(path.join(scenario.name, "scenario.json"));
     if (scenario.setup?.patch) {
@@ -1041,6 +1043,17 @@ async function runScenario(run, args, workerCheckout = null) {
       async () => await applyScenarioSetup(run, runCheckout.cwd, args, runCheckout.env, dryRunCommands),
     );
 
+    if (run.name.startsWith("issue-reporting/")) {
+      const destination = path.join(runCheckout.cwd, ISSUE_REPORTING_SKILL);
+      if (args.dryRun) {
+        dryRunCommands.push(`mkdir -p ${shellQuote(path.dirname(destination))}`);
+        dryRunCommands.push(`cp ${shellQuote(path.join(HARNESS_ROOT, ISSUE_REPORTING_SKILL))} ${shellQuote(destination)}`);
+      } else {
+        await mkdir(path.dirname(destination), { recursive: true });
+        await writeFile(destination, args.issueReportingSkill);
+      }
+    }
+
     for (const [turnIndex, turn] of run.turns.entries()) {
       const progressLabel = `${run.name} (${run.provider}) turn ${turnIndex + 1}/${run.turns.length}`;
       state.claudeSawAssistantText = false;
@@ -1308,11 +1321,22 @@ async function main() {
   const args = parseArgs(process.argv);
   const scenarios = substituteScenarioReviewers(await discoverScenarios(args), args.reviewer);
   if (scenarios.length === 0) throw new Error("No matching scenarios");
+  const needsIssueSkill = scenarios.some((scenario) => scenario.name.startsWith("issue-reporting/"));
+  if (needsIssueSkill) {
+    try {
+      await readFile(path.join(HARNESS_ROOT, ISSUE_REPORTING_SKILL));
+    } catch (error) {
+      throw new Error(`Cannot read issue-reporting candidate ${ISSUE_REPORTING_SKILL}: ${error.message}`);
+    }
+  }
   args.harnessRevision = await runProgressStep(
     args.progress && !args.dryRun,
     "Snapshotting harness inputs",
     async () => await snapshotHarnessRevision(args, scenarios, agentEnvironment()),
   );
+  if (needsIssueSkill && !args.dryRun) {
+    args.issueReportingSkill = execFileSync("git", ["show", `${args.harnessRevision}:${ISSUE_REPORTING_SKILL}`], { cwd: HARNESS_ROOT });
+  }
   args.providerVersions = await runProgressStep(
     args.progress && !args.dryRun,
     "Reading provider versions",

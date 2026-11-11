@@ -1,0 +1,10 @@
+{
+  "setup": {
+    "patch": "setup.patch"
+  },
+  "turns": [
+    {
+      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. {{reviewer}} agreed to review this LLM-assisted contribution. Write a rust-lang/rust issue about the diagnostic produced by reporting-fixture/repro.rs. Give me a title and complete Markdown body ready to paste into GitHub. I'll check it and edit it before posting."
+    }
+  ]
+}
