@@ -26,7 +26,8 @@ function usage() {
   console.error(`Usage:
   node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--reviewer name] [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run] [--progress|--no-progress]
 
-Scenarios are discovered from */scenario.json.
+Scenarios are discovered from */scenario.json, agents-md/*/scenario.json, and issue-reporting/*/scenario.json.
+Select a group-qualified path, or an unambiguous bare scenario name.
 Repeat --provider to run multiple providers. If omitted, both claude and codex run.
 Repeat --only to run multiple scenarios.`);
 }
@@ -1145,27 +1146,36 @@ async function runScenario(run, args, workerCheckout = null) {
 async function discoverScenarios(args) {
   const entries = await readdir(".", { withFileTypes: true });
   const directoryNames = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-  const scenarioDirs = new Set(
-    (
-      await Promise.all(
-        directoryNames.map(async (name) => {
-          const scenarioStat = await stat(path.join(name, "scenario.json")).catch((error) => {
-            if (error.code === "ENOENT") return null;
-            throw error;
-          });
-          return scenarioStat?.isFile() ? name : null;
-        }),
-      )
-    ).filter((name) => name !== null),
-  );
-  const unknownOnly = [...args.only].filter((name) => !scenarioDirs.has(name));
-  if (unknownOnly.length > 0) {
-    throw new Error(`Unknown --only scenario${unknownOnly.length === 1 ? "" : "s"}: ${unknownOnly.join(", ")}`);
+  for (const group of ["agents-md", "issue-reporting"]) {
+    if (!directoryNames.includes(group)) continue;
+    const children = await readdir(group, { withFileTypes: true });
+    directoryNames.push(...children.filter((entry) => entry.isDirectory()).map((entry) => `${group}/${entry.name}`));
   }
-
+  const scenarioDirs = new Set(
+    (await Promise.all(directoryNames.map(async (name) => {
+      const scenarioStat = await stat(path.join(name, "scenario.json")).catch((error) => {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      });
+      return scenarioStat?.isFile() ? name : null;
+    }))).filter((name) => name !== null),
+  );
+  function resolveSelector(selector, flag) {
+    if (selector.includes("/") && scenarioDirs.has(selector)) return selector;
+    const matches = [...scenarioDirs].filter((name) => path.basename(name) === selector);
+    if (matches.length > 1) throw new Error(`Ambiguous ${flag} scenario: ${selector}; use a qualified path: ${matches.sort().join(", ")}`);
+    if (matches.length === 1) return matches[0];
+    if (flag === "--only") throw new Error(`Unknown --only scenario: ${selector}`);
+    return null;
+  }
+  const only = new Set([...args.only].map((name) => resolveSelector(name, "--only")));
+  const skips = new Set([...args.skips].map((name) => resolveSelector(name, "--skip")));
+  for (const name of only) {
+    if (skips.has(name)) throw new Error(`Scenario cannot be both --only and --skip: ${name}`);
+  }
   const dirs = [...scenarioDirs]
-    .filter((name) => args.only.size === 0 || args.only.has(name))
-    .filter((name) => !args.skips.has(name))
+    .filter((name) => only.size === 0 || only.has(name))
+    .filter((name) => !skips.has(name))
     .sort();
 
   const scenarios = [];

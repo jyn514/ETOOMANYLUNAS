@@ -23,8 +23,10 @@ If `claude` or `codex` is not on `PATH`, set
 - `--reviewer Esteban` replaces `{{reviewer}}` in scenario prompts. It is
   required when a selected scenario uses that placeholder; choose someone other
   than the person running the tests.
-- `--only rust-specific-issue` runs one scenario. Repeat it to run multiple scenarios.
-- `--skip rust-specific-issue` skips one scenario. Repeat it to skip multiple scenarios.
+- `--only agents-md/rust-specific-issue` runs one scenario. Repeat it to run multiple scenarios.
+- `--skip agents-md/rust-specific-issue` skips one scenario. Repeat it to skip multiple scenarios.
+- A bare name such as `rust-specific-issue` works when it identifies one scenario; use its group-qualified path when names collide.
+  Scenarios are discovered in `agents-md/` and `issue-reporting/`, as well as directly under the working directory.
 - `--jobs 4` runs up to four scenario/provider runs at once. Turns within a
   scenario still run serially.
 - `--dry-run` prints commands without calling the model.

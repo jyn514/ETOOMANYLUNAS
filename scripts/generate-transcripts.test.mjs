@@ -24,13 +24,17 @@ async function transcriptPaths() {
   const transcripts = [];
   const entries = await readdir(repositoryRoot, { withFileTypes: true });
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const files = await readdir(path.join(repositoryRoot, entry.name), { withFileTypes: true });
+  const directories = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  for (const group of ["agents-md", "issue-reporting"]) {
+    if (!directories.includes(group)) continue;
+    const children = await readdir(path.join(repositoryRoot, group), { withFileTypes: true });
+    directories.push(...children.filter((entry) => entry.isDirectory()).map((entry) => `${group}/${entry.name}`));
+  }
+  for (const directory of directories) {
+    const files = await readdir(path.join(repositoryRoot, directory), { withFileTypes: true });
     if (!files.some((file) => file.isFile() && file.name === "scenario.json")) continue;
-
     for (const file of files) {
-      if (file.isFile() && file.name.endsWith(".md")) transcripts.push(`${entry.name}/${file.name}`);
+      if (file.isFile() && file.name.endsWith(".md")) transcripts.push(`${directory}/${file.name}`);
     }
   }
 
@@ -236,7 +240,7 @@ async function makeFixture(t) {
 
 async function writeScenario(scenarios, name, command = "printf command > command.txt", prompt = `Run ${name}`) {
   const scenarioDir = path.join(scenarios, name);
-  await mkdir(scenarioDir);
+  await mkdir(scenarioDir, { recursive: true });
   const setup = {
     patch: "setup.patch",
     commit: { message: `Fixture ${name}` },
@@ -361,6 +365,38 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
   assert.equal(git(fixture.rustRepo, "status", "--porcelain"), "");
   await assert.rejects(readFile(path.join(fixture.rustRepo, "fixture.txt")), { code: "ENOENT" });
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
+});
+
+test("group-qualified scenarios keep distinct setup and output paths", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "agents-md/shared");
+  await writeScenario(fixture.scenarios, "issue-reporting/shared");
+  await writeScenario(fixture.scenarios, "issue-reporting/unique");
+
+  const ambiguous = await runGenerator({ ...fixture, extraArgs: ["--only", "shared"] });
+  assert.notEqual(ambiguous.status, 0);
+  assert.match(ambiguous.stderr, /Ambiguous --only scenario: shared/);
+  const conflict = await runGenerator({ ...fixture, extraArgs: ["--only", "unique", "--skip", "issue-reporting/unique"] });
+  assert.notEqual(conflict.status, 0);
+  assert.match(conflict.stderr, /Scenario cannot be both --only and --skip: issue-reporting\/unique/);
+
+  const selected = await runGenerator({ ...fixture, extraArgs: ["--only", "issue-reporting/shared", "--only", "unique"] });
+  assert.equal(selected.status, 0, selected.stderr);
+  const transcript = await readFile(path.join(fixture.scenarios, "issue-reporting/shared/codex.md"), "utf8");
+  assert.match(transcript, /\[Setup patch\]\(setup\.patch\)/);
+  assert.match(transcript, /issue-reporting\/shared\|command\|Fixture issue-reporting\/shared/);
+  await readFile(path.join(fixture.scenarios, "issue-reporting/unique/codex.meta.json"));
+  await assert.rejects(readFile(path.join(fixture.scenarios, "agents-md/shared/codex.md")), { code: "ENOENT" });
+
+  const discovery = await runGenerator({ ...fixture, extraArgs: ["--dry-run", "--skip", "issue-reporting/shared"] });
+  assert.equal(discovery.status, 0, discovery.stderr);
+  assert.match(discovery.stderr, /==> agents-md\/shared \(codex\)/);
+  assert.match(discovery.stderr, /==> issue-reporting\/unique \(codex\)/);
+  assert.doesNotMatch(discovery.stderr, /==> issue-reporting\/shared \(codex\)/);
+
+  const remaining = await runGenerator({ ...fixture, extraArgs: ["--only", "agents-md/shared"] });
+  assert.equal(remaining.status, 0, remaining.stderr);
+  assert.match(await readFile(path.join(fixture.scenarios, "agents-md/shared/codex.md"), "utf8"), /agents-md\/shared\|command\|Fixture agents-md\/shared/);
 });
 
 test("reviewer placeholders require --reviewer", async (t) => {
