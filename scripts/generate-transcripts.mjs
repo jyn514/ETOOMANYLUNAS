@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { closeSync, openSync, readFileSync, writeSync } from "node:fs";
+import { StringDecoder } from "node:string_decoder";
 import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
@@ -16,7 +17,7 @@ const ISSUE_REPORTING_SKILL = ".agents/skills/rust-issue-reporting/SKILL.md";
 
 const PROVIDER_MODELS = {
   claude: "claude-sonnet-5",
-  codex: "gpt-5.4-mini",
+  codex: "gpt-6-luna",
 };
 const TRANSCRIPT_SUBMODULES = ["library/backtrace", "src/tools/cargo"];
 const CLAUDE_SCENARIO_SETTINGS = JSON.parse(
@@ -25,12 +26,14 @@ const CLAUDE_SCENARIO_SETTINGS = JSON.parse(
 
 function usage() {
   console.error(`Usage:
-  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--reviewer name] [--provider claude|codex] [--only name] [--skip name] [--jobs n] [--dry-run] [--progress|--no-progress]
+  node scripts/generate-transcripts.mjs --rust-repo /path/to/rust-lang/rust [--reviewer name] [--provider claude|codex] [--only name-or-directory] [--skip name-or-directory] [--skip-existing] [--jobs n] [--dry-run] [--progress|--no-progress]
 
 Scenarios are discovered from */scenario.json, agents-md/*/scenario.json, and issue-reporting/*/scenario.json.
-Select a group-qualified path, or an unambiguous bare scenario name.
+Select a directory, a group-qualified scenario path, or an unambiguous bare scenario name.
+Directories include their discovered scenarios; --skip can exclude cases inside --only directories.
+--skip-existing skips each scenario/provider pair whose transcript already exists.
 Repeat --provider to run multiple providers. If omitted, both claude and codex run.
-Repeat --only to run multiple scenarios.`);
+Repeat --only or --skip to combine selections.`);
 }
 
 function parsePositiveInteger(value, flag) {
@@ -45,6 +48,7 @@ function parseArgs(argv) {
     providers: [],
     only: new Set(),
     skips: new Set(),
+    skipExisting: false,
     jobs: 1,
     dryRun: false,
     progress: true,
@@ -61,6 +65,7 @@ function parseArgs(argv) {
     else if (arg === "--provider") args.providers.push(argv[++i]);
     else if (arg === "--only") args.only.add(argv[++i]);
     else if (arg === "--skip") args.skips.add(argv[++i]);
+    else if (arg === "--skip-existing") args.skipExisting = true;
     else if (arg === "--jobs") args.jobs = parsePositiveInteger(argv[++i], "--jobs");
     else if (arg === "--dry-run") args.dryRun = true;
     else if (arg === "--no-progress") args.progress = false;
@@ -165,6 +170,8 @@ function buildCodexCommand(run, turn, state) {
     `shell_environment_policy.set.XDG_CONFIG_HOME=${JSON.stringify(process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config"))}`,
     "--model",
     PROVIDER_MODELS.codex,
+    "--config",
+    'model_reasoning_effort="medium"',
     "--sandbox",
     "workspace-write",
     "--add-dir",
@@ -349,6 +356,20 @@ function collectCodexMarkdown(line, out, state) {
 
   if (event.type === "thread.started" && event.thread_id) state.threadId = event.thread_id;
 
+  const errorMessage = event.type === "error" ? event.message
+    : event.type === "turn.failed" ? event.error?.message
+    : event.type === "item.completed" && event.item?.type === "error" ? event.item.message
+    : null;
+  if (typeof errorMessage === "string" && errorMessage.trim()) {
+    const message = renderedText(errorMessage.trim(), state);
+    if (!state.codexErrorMessages.has(message)) {
+      state.codexErrorMessages.add(message);
+      flushCommands(out, state);
+      pushEvent(out, `⏺ Codex error: ${message}`);
+    }
+    return;
+  }
+
   const item = event.item;
   if (event.type !== "item.completed" || !item) return;
 
@@ -381,6 +402,7 @@ async function runCommand(
   progressLabel = null,
   onStdoutLine = null,
   killDescendants = false,
+  capture = null,
 ) {
   if (dryRun) {
     return {
@@ -402,6 +424,24 @@ async function runCommand(
     });
     let stdout = "";
     let pendingStdout = "";
+    const decoder = new StringDecoder("utf8");
+    let captureError = null;
+    let spawnError = null;
+    const captureBytes = (stream, data) => {
+      if (!capture || captureError) return;
+      try {
+        let offset = 0;
+        while (offset < data.length) {
+          const written = writeSync(capture[stream], data, offset, data.length - offset);
+          if (written === 0) throw new Error(`Could not write ${stream} capture`);
+          offset += written;
+          capture[`${stream}Bytes`] += written;
+        }
+      } catch (error) {
+        captureError = error;
+        child.kill();
+      }
+    };
     let stderr = "";
     let lastOutputAt = Date.now();
     const startedAt = lastOutputAt;
@@ -418,7 +458,8 @@ async function runCommand(
 
     child.stdout.on("data", (data) => {
       lastOutputAt = Date.now();
-      const text = data.toString();
+      captureBytes("stdout", data);
+      const text = decoder.write(data);
       stdout += text;
       if (onStdoutLine) {
         pendingStdout += text;
@@ -431,12 +472,12 @@ async function runCommand(
     });
     child.stderr.on("data", (data) => {
       lastOutputAt = Date.now();
+      captureBytes("stderr", data);
       stderr += data.toString();
       process.stderr.write(data);
     });
     child.on("error", (error) => {
-      clearInterval(heartbeat);
-      resolve({ stdout, stderr: `${stderr}${error.message}\n`, status: 127, durationMs: Date.now() - startedAt, error });
+      spawnError = error;
     });
     child.on("exit", () => {
       if (ownsProcessGroup) descendantCleanup = terminateProcessGroup(child.pid);
@@ -445,8 +486,16 @@ async function runCommand(
       clearInterval(heartbeat);
       descendantCleanup.then(
         () => {
+          const tail = decoder.end();
+          stdout += tail;
+          pendingStdout += tail;
           if (onStdoutLine && pendingStdout) onStdoutLine(pendingStdout);
-          resolve({ stdout, stderr, status, signal, durationMs: Date.now() - startedAt });
+          const error = spawnError ?? captureError;
+          resolve({
+            stdout, stderr: spawnError ? `${stderr}${spawnError.message}\n` : stderr,
+            status: spawnError ? 127 : captureError ? 1 : status, signal,
+            durationMs: Date.now() - startedAt, error,
+          });
         },
         (error) => {
           resolve({
@@ -997,6 +1046,7 @@ async function runScenario(run, args, workerCheckout = null) {
     }
   }
   fixtureLinks.push(`[Run metadata](${run.provider}.meta.json)`);
+  fixtureLinks.push(`[Raw output](${run.provider}.jsonl)`, `[Provider stderr](${run.provider}.stderr.log)`);
   const transcript = [fixtureLinks.join(" · "), ""];
   const dryRunCommands = [];
   const turnResults = [];
@@ -1006,11 +1056,13 @@ async function runScenario(run, args, workerCheckout = null) {
     claudeSessionId: null,
     claudeSawAssistantText: false,
     codexAgentMessageTexts: new Set(),
+    codexErrorMessages: new Set(),
     commands: [],
     checkoutPaths: [],
   };
   const runEnvironment = await prepareRunEnvironment(run, args.dryRun);
   let runCheckout = workerCheckout;
+  let capture = null;
 
   try {
     if (runCheckout) {
@@ -1055,10 +1107,24 @@ async function runScenario(run, args, workerCheckout = null) {
       }
     }
 
+    if (!args.dryRun) {
+      const outDir = path.resolve(run.name);
+      await mkdir(outDir, { recursive: true });
+      const stdout = openSync(path.join(outDir, `${run.provider}.jsonl`), "w");
+      try {
+        const stderr = openSync(path.join(outDir, `${run.provider}.stderr.log`), "w");
+        capture = { stdout, stderr, stdoutBytes: 0, stderrBytes: 0 };
+      } catch (error) {
+        closeSync(stdout);
+        throw error;
+      }
+    }
+
     for (const [turnIndex, turn] of run.turns.entries()) {
       const progressLabel = `${run.name} (${run.provider}) turn ${turnIndex + 1}/${run.turns.length}`;
       state.claudeSawAssistantText = false;
       state.codexAgentMessageTexts.clear();
+      state.codexErrorMessages.clear();
       const suffix = turn.suggested ? "  ## suggested" : "";
       transcript.push(`❯ ${turn.prompt}${suffix}`, "");
 
@@ -1085,6 +1151,8 @@ async function runScenario(run, args, workerCheckout = null) {
           }
         }
       };
+      const stdoutStart = capture?.stdoutBytes;
+      const stderrStart = capture?.stderrBytes;
       const result = await runCommand(
         command,
         runCheckout.cwd,
@@ -1093,11 +1161,13 @@ async function runScenario(run, args, workerCheckout = null) {
         args.progress && !args.dryRun ? progressLabel : null,
         args.dryRun ? null : collectOutputLine,
         !args.dryRun,
+        capture,
       );
       turnResults.push({
         turn: turnIndex + 1,
         status: result.status,
         duration_ms: result.durationMs,
+        ...(capture ? { stdout_bytes: [stdoutStart, capture.stdoutBytes], stderr_bytes: [stderrStart, capture.stderrBytes] } : {}),
         ...(result.signal === null || result.signal === undefined ? {} : { signal: result.signal }),
       });
       flushCommands(transcript, state);
@@ -1112,6 +1182,7 @@ async function runScenario(run, args, workerCheckout = null) {
           const envVar = run.provider === "claude" ? "CLAUDE_BIN" : "CODEX_BIN";
           transcript.push(`⏺ Could not find ${command.command}. Install it, put it on PATH, or set ${envVar} to its full path.`);
         }
+        if (result.error && result.error.code !== "ENOENT") transcript.push(`⏺ ${result.error.message}`);
         if (result.stderr.trim()) transcript.push("", "```text", result.stderr.trim(), "```");
         break;
       }
@@ -1121,9 +1192,15 @@ async function runScenario(run, args, workerCheckout = null) {
     }
   } finally {
     try {
-      if (!workerCheckout) await runCheckout?.cleanup?.();
+      if (capture) {
+        try { closeSync(capture.stdout); } finally { closeSync(capture.stderr); }
+      }
     } finally {
-      await runEnvironment.cleanup?.();
+      try {
+        if (!workerCheckout) await runCheckout?.cleanup?.();
+      } finally {
+        await runEnvironment.cleanup?.();
+      }
     }
   }
 
@@ -1144,6 +1221,7 @@ async function runScenario(run, args, workerCheckout = null) {
           generated_at: new Date().toISOString(),
           provider: run.provider,
           model: PROVIDER_MODELS[run.provider],
+          reasoning_effort: "medium",
           provider_version: args.providerVersions[run.provider],
           harness_revision: args.harnessRevision,
           rust_revision: args.inputRevision,
@@ -1155,6 +1233,10 @@ async function runScenario(run, args, workerCheckout = null) {
       )}\n`,
     ),
   ]);
+  const failedTurn = turnResults.find((turn) => turn.status !== 0);
+  if (failedTurn) {
+    throw new Error(`${run.provider} turn ${failedTurn.turn} exited with status ${failedTurn.status}; transcript saved to ${path.join(run.name, `${run.provider}.md`)}`);
+  }
 }
 
 async function discoverScenarios(args) {
@@ -1175,36 +1257,56 @@ async function discoverScenarios(args) {
     }))).filter((name) => name !== null),
   );
   function resolveSelector(selector, flag) {
-    if (selector.includes("/") && scenarioDirs.has(selector)) return selector;
+    const relative = path.relative(process.cwd(), path.resolve(selector)).split(path.sep).join("/") || ".";
+    const descendants = [...scenarioDirs].filter((name) => relative === "." || name.startsWith(`${relative}/`));
+    if (descendants.length > 0) {
+      return { target: relative, names: scenarioDirs.has(relative) ? [relative, ...descendants] : descendants };
+    }
+    if (selector.includes("/") && scenarioDirs.has(relative)) return { target: relative, names: [relative] };
     const matches = [...scenarioDirs].filter((name) => path.basename(name) === selector);
     if (matches.length > 1) throw new Error(`Ambiguous ${flag} scenario: ${selector}; use a qualified path: ${matches.sort().join(", ")}`);
-    if (matches.length === 1) return matches[0];
+    if (matches.length === 1) return { target: matches[0], names: matches };
     if (flag === "--only") throw new Error(`Unknown --only scenario: ${selector}`);
-    return null;
+    return { target: null, names: [] };
   }
-  const only = new Set([...args.only].map((name) => resolveSelector(name, "--only")));
-  const skips = new Set([...args.skips].map((name) => resolveSelector(name, "--skip")));
-  for (const name of only) {
-    if (skips.has(name)) throw new Error(`Scenario cannot be both --only and --skip: ${name}`);
+  const onlySelections = [...args.only].map((name) => resolveSelector(name, "--only"));
+  const skipSelections = [...args.skips].map((name) => resolveSelector(name, "--skip"));
+  for (const selection of onlySelections) {
+    if (skipSelections.some((skip) => skip.target === selection.target)) {
+      throw new Error(`Scenario cannot be both --only and --skip: ${selection.target}`);
+    }
   }
+  const only = new Set(onlySelections.flatMap((selection) => selection.names));
+  const skips = new Set(skipSelections.flatMap((selection) => selection.names));
   const dirs = [...scenarioDirs]
-    .filter((name) => only.size === 0 || only.has(name))
+    .filter((name) => args.only.size === 0 || only.has(name))
     .filter((name) => !skips.has(name))
     .sort();
 
   const scenarios = [];
+  let skippedExisting = 0;
   for (const name of dirs) {
+    const providers = [];
+    for (const provider of args.providers) {
+      const transcript = args.skipExisting ? await stat(path.join(name, `${provider}.md`)).catch((error) => {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      }) : null;
+      if (transcript?.isFile()) skippedExisting += 1;
+      else providers.push(provider);
+    }
+    if (providers.length === 0) continue;
     try {
       const scenarioPath = path.join(name, "scenario.json");
       const scenario = JSON.parse(await readFile(scenarioPath, "utf8"));
       const setup = validateScenarioSetup(name, scenario.setup);
-      scenarios.push({ name, turns: scenario.turns, setup });
+      scenarios.push({ name, turns: scenario.turns, setup, providers });
     } catch (error) {
       if (error.code !== "ENOENT") throw new Error(`Failed to read ${name}/scenario.json: ${error.message}`);
     }
   }
 
-  return scenarios;
+  return { scenarios, skippedExisting };
 }
 
 function substituteScenarioReviewers(scenarios, reviewer) {
@@ -1320,8 +1422,19 @@ async function runAll(runs, args) {
 
 async function main() {
   const args = parseArgs(process.argv);
-  const scenarios = substituteScenarioReviewers(await discoverScenarios(args), args.reviewer);
-  if (scenarios.length === 0) throw new Error("No matching scenarios");
+  const discovered = await discoverScenarios(args);
+  if (discovered.skippedExisting > 0) {
+    console.error(`Skipping ${discovered.skippedExisting} existing transcript${discovered.skippedExisting === 1 ? "" : "s"}.`);
+  }
+  if (discovered.scenarios.length === 0) {
+    if (discovered.skippedExisting > 0) {
+      console.error("No missing transcripts; nothing to run.");
+      return;
+    }
+    throw new Error("No matching scenarios");
+  }
+  const scenarios = substituteScenarioReviewers(discovered.scenarios, args.reviewer);
+  args.providers = [...new Set(scenarios.flatMap((scenario) => scenario.providers))];
   const needsIssueSkill = scenarios.some((scenario) => scenario.name.startsWith("issue-reporting/"));
   if (needsIssueSkill) {
     try {
@@ -1376,7 +1489,7 @@ async function main() {
   }
 
   const runs = scenarios.flatMap((scenario) =>
-    args.providers.map((provider) => ({
+    scenario.providers.map((provider) => ({
       ...scenario,
       provider,
       bootstrapCachePath: args.bootstrapCachePath,

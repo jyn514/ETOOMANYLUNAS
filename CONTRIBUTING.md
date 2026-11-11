@@ -25,8 +25,13 @@ An authentication-only wrapper may select credentials without changing harness c
 - `--reviewer Esteban` replaces `{{reviewer}}` in scenario prompts. It is
   required when a selected scenario uses that placeholder; choose someone other
   than the person running the tests.
-- `--only agents-md/rust-specific-issue` runs one scenario. Repeat it to run multiple scenarios.
-- `--skip agents-md/rust-specific-issue` skips one scenario. Repeat it to skip multiple scenarios.
+- `--only agents-md/rust-specific-issue` runs one scenario; `--only agents-md` selects that directory's discovered scenarios.
+  Repeat `--only` to combine selections, or use `--only .` for all discovered scenarios.
+- `--skip agents-md` excludes a directory; `--skip agents-md/rust-specific-issue` excludes one scenario, including from a directory selected with `--only`.
+  Repeat `--skip` to combine exclusions.
+- `--skip-existing` runs only scenario/provider pairs without an existing `<provider>.md` transcript.
+  It also skips failed, empty, or stale transcripts; it does not require metadata or validate previous results.
+  If every selected pair already has a transcript, it exits successfully without starting providers or preparing checkouts.
 - A bare name such as `rust-specific-issue` works when it identifies one scenario; use its group-qualified path when names collide.
   Scenarios are discovered in `agents-md/` and `issue-reporting/`, as well as directly under the working directory.
 - `--jobs 4` runs up to four scenario/provider runs at once. Turns within a
@@ -34,6 +39,9 @@ An authentication-only wrapper may select credentials without changing harness c
 - `--dry-run` prints commands without calling the model.
 - `--provider claude|codex` selects a provider. Repeat it to run multiple
   providers. If omitted, both run.
+
+New Codex runs use `gpt-6-luna` with medium reasoning effort.
+Existing transcripts retain the model recorded in their metadata.
 
 ### Isolation and network access
 
@@ -47,7 +55,7 @@ checkout, including uncommitted and non-ignored untracked files:
 - `.agents`
 
 It excludes other checkout changes and the caller's global configuration.
-For `issue-reporting/` scenarios, the runner overlays the harness-local `.agents/skills/rust-issue-reporting/SKILL.md` onto that path in the disposable Rust checkout after scenario setup.
+When a scenario is placed under `issue-reporting/`, the runner overlays the harness-local `.agents/skills/rust-issue-reporting/SKILL.md` onto that path in the disposable Rust checkout after scenario setup.
 This candidate is included in the harness revision recorded in run metadata; other scenarios use the Rust checkout's instructions unchanged.
 Claude retains its authenticated config directory but disables user settings,
 instructions, skills, and MCP servers through CLI controls. Its harness settings
@@ -75,6 +83,9 @@ non-interactive, SSH agent access is cleared, and askpass helpers fail instead
 of opening a prompt. Set `TRANSCRIPTS_ALLOW_SSH_PROMPTS=1` to restore inherited
 SSH agent behavior.
 
+Provider failures retain the transcript and metadata, print an error instead of a success marker, and make the runner exit nonzero.
+Codex JSON error events appear in the transcript, including errors reported before any model response.
+
 ### Shared setup and cache
 
 For multi-run batches, the runner prepares Cargo and backtrace once and
@@ -92,17 +103,18 @@ The script prints agent messages and tool events on stderr as they arrive. If a
 child process is silent for 30 seconds, a heartbeat names the run and turn. Use
 `--no-progress` for quiet operation.
 
-Each run writes `<scenario>/<provider>.md` and
-`<scenario>/<provider>.meta.json`. The metadata records:
+Each run writes `<scenario>/<provider>.jsonl` with the provider stdout bytes and `<scenario>/<provider>.stderr.log` with its stderr bytes.
+These raw files are written as output arrives and retained on provider failure; they are the primary evidence.
+`<scenario>/<provider>.md` is a readable, lossy summary, and `<scenario>/<provider>.meta.json` records:
 
-- provider, model, and CLI version;
+- provider, model, reasoning effort, and CLI version;
 - generation time and reviewer, when supplied;
-- synthetic harness and Rust input revisions.
+- synthetic harness and Rust input revisions;
+- per-turn half-open byte ranges in each raw file, so concatenated turns can be separated.
 
 The harness revision starts from harness `HEAD` and includes uncommitted changes
 only to the runner, command rules, selected scenarios, and their declared setup
-patches. Transcript outputs and annotations are excluded. The raw JSONL event
-stream is used only while rendering the Markdown transcript.
+patches. Transcript outputs and annotations are excluded.
 
 ## Testing the runner
 
@@ -112,7 +124,7 @@ Run the runner tests with:
 node --test scripts/generate-transcripts.test.mjs
 ```
 
-The tests use temporary Git repositories and a fake Codex executable; they do
+The tests use temporary Git repositories and fake provider executables; they do
 not call a model.
 
 ## Scenario setup

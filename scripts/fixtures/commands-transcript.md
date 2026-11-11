@@ -1,4 +1,4 @@
-[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](codex.meta.json)
+[Fixture](scenario.json) · [Setup patch](setup.patch) · [Run metadata](codex.meta.json) · [Raw output](codex.jsonl) · [Provider stderr](codex.stderr.log)
 
 ❯ Run commands
 

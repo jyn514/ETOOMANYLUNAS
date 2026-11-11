@@ -112,7 +112,28 @@ if (process.argv.includes("--version")) {
   console.log("fake-codex 1.0");
   process.exit(0);
 }
-if (process.env.FAIL_PROVIDER === "1") process.exit(7);
+if (process.env.RAW_CAPTURE_FIXTURE === "1") {
+  const bytes = Buffer.from('{"type":"unknown","text":"é"}\\nnot-json', "utf8");
+  const split = bytes.indexOf(0xc3) + 1;
+  process.stdout.write(bytes.subarray(0, split));
+  if (process.env.RAW_CAPTURE_GATE) {
+    while (!existsSync(process.env.RAW_CAPTURE_GATE)) await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  process.stdout.write(bytes.subarray(split));
+  process.stderr.write("provider stderr é\\n");
+  if (process.env.RAW_CAPTURE_FAIL === "1") process.exitCode = 7;
+} else {
+if (process.env.CHECK_MODEL_SETTINGS === "1") {
+  if (process.argv[process.argv.indexOf("--model") + 1] !== "gpt-6-luna") throw Error("wrong trial model");
+  if (!process.argv.includes('model_reasoning_effort="medium"')) throw Error("wrong reasoning effort");
+}
+if (process.env.FAIL_PROVIDER === "1") {
+  console.log(JSON.stringify({ type: "item.completed", item: { type: "error", message: "fixture metadata warning" } }));
+  console.log(JSON.stringify({ type: "error", message: "fixture model unsupported" }));
+  console.log(JSON.stringify({ type: "turn.failed", error: { message: "fixture model unsupported" } }));
+  process.exit(7);
+}
 const fixture = existsSync("fixture.txt") ? readFileSync("fixture.txt", "utf8").trim() : "missing";
 const command = existsSync("command.txt") ? readFileSync("command.txt", "utf8").trim() : "missing";
 const subject = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
@@ -195,6 +216,7 @@ if (process.env.EMIT_COMMANDS === "1") {
     item: { type: "command_execution", command: "printf three" }
   }));
 }
+}
 `,
   );
   await chmod(fakeCodex, 0o755);
@@ -203,10 +225,24 @@ if (process.env.EMIT_COMMANDS === "1") {
   await writeFile(
     fakeClaude,
     `#!/usr/bin/env node
+import { existsSync } from "node:fs";
 if (process.argv.includes("--version")) {
   console.log("fake-claude 1.0");
   process.exit(0);
 }
+if (process.env.RAW_CAPTURE_FIXTURE === "1") {
+  const bytes = Buffer.from('{"type":"unknown","text":"é"}\\nnot-json', "utf8");
+  const split = bytes.indexOf(0xc3) + 1;
+  process.stdout.write(bytes.subarray(0, split));
+  if (process.env.RAW_CAPTURE_GATE) {
+    while (!existsSync(process.env.RAW_CAPTURE_GATE)) await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  process.stdout.write(bytes.subarray(split));
+  process.stderr.write("provider stderr é\\n");
+  if (process.env.RAW_CAPTURE_FAIL === "1") process.exitCode = 7;
+} else
+{
 const settingsIndex = process.argv.indexOf("--settings");
 console.log(JSON.stringify({
   type: "assistant",
@@ -229,6 +265,7 @@ console.log(JSON.stringify({
   }] },
 }));
 console.log(JSON.stringify({ type: "result", subtype: "success", result: "done" }));
+}
 `,
   );
   await chmod(fakeClaude, 0o755);
@@ -352,6 +389,7 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
     extraEnv: {
       CARGO_TARGET_DIR: path.join(fixture.root, "external-target"),
       EMIT_LOCAL_LINK: "1",
+      CHECK_MODEL_SETTINGS: "1",
     },
   });
 
@@ -361,6 +399,8 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
   assert.equal(metadata.reviewer, "Esteban");
   assert.equal(metadata.rust_revision, rustRevision);
   assert.equal(metadata.version, 2);
+  assert.equal(metadata.model, "gpt-6-luna");
+  assert.equal(metadata.reasoning_effort, "medium");
   assert.equal(metadata.turns.length, 1);
   assert.equal(metadata.turns[0].turn, 1);
   assert.equal(metadata.turns[0].status, 0);
@@ -368,10 +408,10 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
   const transcript = await readFile(path.join(fixture.scenarios, "linked", "codex.md"), "utf8");
   assert.match(
     transcript,
-    /^\[Fixture\]\(scenario\.json\) · \[Setup patch\]\(setup\.patch\) · \[Run metadata\]\(codex\.meta\.json\)\n\n❯/,
+    /^\[Fixture\]\(scenario\.json\) · \[Setup patch\]\(setup\.patch\) · \[Run metadata\]\(codex\.meta\.json\) · \[Raw output\]\(codex\.jsonl\) · \[Provider stderr\]\(codex\.stderr\.log\)\n\n❯/,
   );
   const noSetupTranscript = await readFile(path.join(noSetupDir, "codex.md"), "utf8");
-  assert.match(noSetupTranscript, /^\[Run metadata\]\(codex\.meta\.json\)\n\n❯/);
+  assert.match(noSetupTranscript, /^\[Run metadata\]\(codex\.meta\.json\) · \[Raw output\]\(codex\.jsonl\) · \[Provider stderr\]\(codex\.stderr\.log\)\n\n❯/);
   assert.doesNotMatch(noSetupTranscript, /\[Fixture\]|\[Setup patch\]/);
   await readFile(path.join(fixture.scenarios, "selected-alpha", "codex.md"));
   await readFile(path.join(fixture.scenarios, "selected-gamma", "codex.md"));
@@ -459,6 +499,86 @@ test("group-qualified scenarios keep distinct setup and output paths", async (t)
   const remaining = await runGenerator({ ...fixture, extraArgs: ["--only", "agents-md/shared"] });
   assert.equal(remaining.status, 0, remaining.stderr);
   assert.match(await readFile(path.join(fixture.scenarios, "agents-md/shared/codex.md"), "utf8"), /agents-md\/shared\|command\|Fixture agents-md\/shared/);
+});
+
+test("directory selectors include descendants and allow excluding individual cases", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "agents-md/shared");
+  await writeScenario(fixture.scenarios, "issue-reporting/shared");
+  await writeScenario(fixture.scenarios, "issue-reporting/unique");
+  await writeScenario(fixture.scenarios, "issue-reporting-neighbor");
+
+  const selected = await runGenerator({ ...fixture, extraArgs: ["--only", "./issue-reporting/", "--skip", "issue-reporting/shared", "--dry-run"] });
+  assert.equal(selected.status, 0, selected.stderr);
+  assert.match(selected.stderr, /==> issue-reporting\/unique \(codex\)/);
+  assert.doesNotMatch(selected.stderr, /==> (?:issue-reporting\/shared|agents-md\/shared|issue-reporting-neighbor) /);
+
+  const excluded = await runGenerator({ ...fixture, extraArgs: ["--skip", "agents-md/", "--skip", "./issue-reporting", "--dry-run"] });
+  assert.equal(excluded.status, 0, excluded.stderr);
+  assert.match(excluded.stderr, /==> issue-reporting-neighbor \(codex\)/);
+  assert.doesNotMatch(excluded.stderr, /==> (?:agents-md|issue-reporting)\//);
+
+  const all = await runGenerator({ ...fixture, extraArgs: ["--only", ".", "--skip", "issue-reporting/", "--dry-run"] });
+  assert.equal(all.status, 0, all.stderr);
+  assert.match(all.stderr, /==> agents-md\/shared \(codex\)/);
+  assert.match(all.stderr, /==> issue-reporting-neighbor \(codex\)/);
+  assert.doesNotMatch(all.stderr, /==> issue-reporting\//);
+});
+
+test("skip-existing selects missing provider transcripts without overwriting existing results", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "agents-md/pair");
+  await writeScenario(fixture.scenarios, "issue-reporting/pair");
+  await writeScenario(fixture.scenarios, "reviewed", null, "{{reviewer}} is reviewing this");
+  const existing = new Map([
+    ["agents-md/pair/codex.md", "previous failed run\n"],
+    ["agents-md/pair/codex.meta.json", "previous metadata\n"],
+    ["issue-reporting/pair/claude.md", ""],
+    ["reviewed/codex.md", "saved codex\n"],
+    ["reviewed/claude.md", "saved claude\n"],
+  ]);
+  for (const [file, bytes] of existing) await writeFile(path.join(fixture.scenarios, file), bytes);
+  const first = await runGenerator({ ...fixture, extraArgs: ["--provider", "claude", "--skip-existing"] });
+  assert.equal(first.status, 0, first.stderr);
+  for (const [file, bytes] of existing) assert.equal(await readFile(path.join(fixture.scenarios, file), "utf8"), bytes);
+  const generated = ["agents-md/pair/claude.md", "issue-reporting/pair/codex.md"];
+  for (const file of generated) existing.set(file, await readFile(path.join(fixture.scenarios, file), "utf8"));
+
+  await writeFile(path.join(fixture.scenarios, "agents-md/pair/scenario.json"), "invalid completed fixture");
+  await rm(path.join(fixture.scenarios, ".agents/skills/rust-issue-reporting/SKILL.md"));
+  const second = await runGenerator({ ...fixture,
+    rustRepo: path.join(fixture.root, "missing-rust"),
+    fakeClaude: path.join(fixture.root, "missing-claude"),
+    fakeCodex: path.join(fixture.root, "missing-codex"),
+    extraArgs: ["--provider", "claude", "--skip-existing"],
+  });
+  assert.equal(second.status, 0, second.stderr);
+  assert.match(second.stderr, /nothing to run/i);
+  for (const [file, bytes] of existing) assert.equal(await readFile(path.join(fixture.scenarios, file), "utf8"), bytes);
+  await assert.rejects(readFile(path.join(fixture.scenarios, "agents-md/pair/codex.jsonl")), { code: "ENOENT" });
+});
+
+test("skip-existing affects dry runs and does not require skipped provider binaries", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "case");
+  await writeFile(path.join(fixture.scenarios, "case/claude.md"), "saved claude\n");
+  const dry = await runGenerator({ ...fixture, extraArgs: ["--provider", "claude", "--skip-existing", "--dry-run"] });
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.match(dry.stderr, /==> case \(codex\)/);
+  for (const file of ["codex.jsonl", "codex.stderr.log", "claude.jsonl", "claude.stderr.log"]) {
+    await assert.rejects(readFile(path.join(fixture.scenarios, "case", file)), { code: "ENOENT" });
+  }
+  assert.doesNotMatch(dry.stderr, /==> case \(claude\)/);
+  const live = await runGenerator({ ...fixture,
+    fakeClaude: path.join(fixture.root, "missing-claude"),
+    extraArgs: ["--provider", "claude", "--skip-existing"],
+  });
+  assert.equal(live.status, 0, live.stderr);
+  await readFile(path.join(fixture.scenarios, "case/codex.md"));
+  const withoutFlag = await runGenerator({ ...fixture, extraArgs: ["--provider", "claude", "--dry-run"] });
+  assert.equal(withoutFlag.status, 0, withoutFlag.stderr);
+  assert.match(withoutFlag.stderr, /==> case \(claude\)/);
+  assert.match(withoutFlag.stderr, /==> case \(codex\)/);
 });
 
 test("issue-reporting uses the snapshotted local skill without changing Rust input", async (t) => {
@@ -689,17 +809,62 @@ test("a provider failure is recorded and its worktree is removed", async (t) => 
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "provider-failure");
 
-  const result = await runGenerator({ ...fixture, extraEnv: { FAIL_PROVIDER: "1" } });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(
-    await readFile(path.join(fixture.scenarios, "provider-failure", "codex.md"), "utf8"),
-    /codex exited with status 7/,
-  );
+  const result = await runGenerator({ ...fixture, extraArgs: ["--progress"], extraEnv: { FAIL_PROVIDER: "1" } });
+  assert.notEqual(result.status, 0);
+  assert.doesNotMatch(result.stderr, /✓.*provider-failure.*done/);
+  assert.match(result.stderr, /fixture model unsupported/);
+  const transcript = await readFile(path.join(fixture.scenarios, "provider-failure", "codex.md"), "utf8");
+  assert.match(transcript, /codex exited with status 7/);
+  assert.match(transcript, /fixture metadata warning/);
+  assert.equal(transcript.match(/fixture model unsupported/g)?.length, 1);
   const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, "provider-failure", "codex.meta.json"), "utf8"));
   assert.equal(metadata.turns.length, 1);
   assert.equal(metadata.turns[0].status, 7);
   assert.equal(Number.isInteger(metadata.turns[0].duration_ms), true);
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
+});
+
+test("raw provider streams retain exact bytes across turns and failure", async (t) => {
+  for (const provider of ["codex", "claude"]) {
+    const fixture = await makeFixture(t);
+    await writeScenario(fixture.scenarios, "raw");
+    const scenarioFile = path.join(fixture.scenarios, "raw/scenario.json");
+    const scenario = JSON.parse(await readFile(scenarioFile, "utf8"));
+    scenario.turns.push({ prompt: "Second turn" });
+    await writeFile(scenarioFile, JSON.stringify(scenario));
+    const expected = Buffer.from('{"type":"unknown","text":"é"}\nnot-json');
+    const stderr = Buffer.from("provider stderr é\n");
+    const result = await runGenerator({ ...fixture, provider, extraEnv: { RAW_CAPTURE_FIXTURE: "1" } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(await readFile(path.join(fixture.scenarios, `raw/${provider}.jsonl`)), Buffer.concat([expected, expected]));
+    assert.deepEqual(await readFile(path.join(fixture.scenarios, `raw/${provider}.stderr.log`)), Buffer.concat([stderr, stderr]));
+    const metadata = JSON.parse(await readFile(path.join(fixture.scenarios, `raw/${provider}.meta.json`), "utf8"));
+    assert.deepEqual(metadata.turns.map((turn) => turn.stdout_bytes), [[0, expected.length], [expected.length, expected.length * 2]]);
+    assert.deepEqual(metadata.turns.map((turn) => turn.stderr_bytes), [[0, stderr.length], [stderr.length, stderr.length * 2]]);
+    const failed = await runGenerator({ ...fixture, provider, extraEnv: { RAW_CAPTURE_FIXTURE: "1", RAW_CAPTURE_FAIL: "1" } });
+    assert.notEqual(failed.status, 0);
+    assert.deepEqual(await readFile(path.join(fixture.scenarios, `raw/${provider}.jsonl`)), expected);
+    assert.deepEqual(await readFile(path.join(fixture.scenarios, `raw/${provider}.stderr.log`)), stderr);
+  }
+});
+
+test("raw output is visible while the provider is still running", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "in-flight");
+  const gate = path.join(fixture.root, "release");
+  const output = path.join(fixture.scenarios, "in-flight/codex.jsonl");
+  const run = runGenerator({ ...fixture, extraEnv: { RAW_CAPTURE_FIXTURE: "1", RAW_CAPTURE_GATE: gate } });
+  try {
+    let captured = Buffer.alloc(0);
+    for (let attempt = 0; attempt < 200 && captured.length === 0; attempt++) {
+      captured = await readFile(output).catch(() => Buffer.alloc(0));
+      if (captured.length === 0) await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    assert.deepEqual(captured, Buffer.from('{"type":"unknown","text":"\xc3', "latin1"));
+  } finally {
+    await writeFile(gate, "release");
+    await run;
+  }
 });
 
 test("rendered transcripts match the golden Markdown fixture", async (t) => {
