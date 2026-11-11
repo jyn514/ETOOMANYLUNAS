@@ -17,6 +17,8 @@ Code or Codex non-interactively. Each transcript directory contains its
 
 If `claude` or `codex` is not on `PATH`, set
 `CLAUDE_BIN=/full/path/to/claude` or `CODEX_BIN=/full/path/to/codex`.
+Point these at the actual CLI executables, not personal wrappers that inject configuration or instructions.
+An authentication-only wrapper may select credentials without changing harness configuration.
 
 ### Select runs
 
@@ -51,7 +53,11 @@ Claude retains its authenticated config directory but disables user settings,
 instructions, skills, and MCP servers through CLI controls. Its harness settings
 permit edits and automatically approve Bash only inside a mandatory sandbox;
 unsandboxed commands are forbidden. Codex receives a disposable `CODEX_HOME`
-under `work/codex-homes/`, without global instructions, rules, or session state.
+under `work/codex-homes/`, without caller configuration, profiles, instructions, skills, plugins, rules, or session state.
+It also gives the Codex process an empty `HOME` and `XDG_CONFIG_HOME` so user-level skill discovery cannot import global instructions.
+Shell tools retain the caller's original home and config directory; this isolates harness configuration, not every tool's configuration or filesystem access.
+With `CODEX_ACCESS_TOKEN`, the runner copies no saved credentials.
+Otherwise, it copies only `auth.json` into the disposable home; credential updates cannot write back to the original file.
 The runner removes each home after its run.
 These homes stay outside the system temporary directory because Codex refuses to create its PATH helpers there.
 Provider-specific read-only command permissions live in

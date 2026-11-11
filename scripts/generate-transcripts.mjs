@@ -2,7 +2,7 @@
 
 import { execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -159,6 +159,10 @@ function buildCodexCommand(run, turn, state) {
   const args = [
     "exec",
     "--json",
+    "--config",
+    `shell_environment_policy.set.HOME=${JSON.stringify(process.env.HOME ?? homedir())}`,
+    "--config",
+    `shell_environment_policy.set.XDG_CONFIG_HOME=${JSON.stringify(process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config"))}`,
     "--model",
     PROVIDER_MODELS.codex,
     "--sandbox",
@@ -175,19 +179,6 @@ function buildCodexCommand(run, turn, state) {
 
   args.push(turn.prompt);
   return { command: run.codexBin ?? process.env.CODEX_BIN ?? "codex", args };
-}
-
-async function symlinkChildrenExcept(sourceDir, targetDir, excludedNames) {
-  const entries = await readdir(sourceDir, { withFileTypes: true }).catch((error) => {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  });
-
-  await mkdir(targetDir, { recursive: true });
-  for (const entry of entries) {
-    if (excludedNames.has(entry.name)) continue;
-    await symlink(path.join(sourceDir, entry.name), path.join(targetDir, entry.name), entry.isDirectory() ? "dir" : "file");
-  }
 }
 
 function agentEnvironment(overrides = {}) {
@@ -222,11 +213,16 @@ async function prepareRunEnvironment(run, dryRun) {
   const isolatedCodexHome = await mkdtemp(path.join(codexHomes, "run-"));
   const isolatedSqliteHome = path.join(isolatedCodexHome, "sqlite");
   const isolatedRulesDir = path.join(isolatedCodexHome, "rules");
-  await symlinkChildrenExcept(
-    codexHome,
-    isolatedCodexHome,
-    new Set(["AGENTS.md", "AGENTS.override.md", "rules", "sqlite"]),
-  );
+  // Keep model-side configuration and skill discovery separate from tool configuration.
+  // An explicit runtime token must not fall back to the caller's saved credentials.
+  if (!process.env.CODEX_ACCESS_TOKEN) {
+    await copyFile(path.join(codexHome, "auth.json"), path.join(isolatedCodexHome, "auth.json")).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
+  const isolatedUserHome = path.join(isolatedCodexHome, "user-home");
+  const isolatedConfigHome = path.join(isolatedUserHome, ".config");
+  await mkdir(isolatedConfigHome, { recursive: true });
   await mkdir(isolatedSqliteHome);
   await mkdir(isolatedRulesDir);
   await writeFile(
@@ -239,6 +235,8 @@ async function prepareRunEnvironment(run, dryRun) {
       ...sharedEnvironment,
       CODEX_HOME: isolatedCodexHome,
       CODEX_SQLITE_HOME: isolatedSqliteHome,
+      HOME: isolatedUserHome,
+      XDG_CONFIG_HOME: isolatedConfigHome,
     }),
     cleanup: async () => {
       await rm(isolatedCodexHome, { recursive: true, force: true });

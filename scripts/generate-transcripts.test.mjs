@@ -116,6 +116,22 @@ if (process.env.FAIL_PROVIDER === "1") process.exit(7);
 const fixture = existsSync("fixture.txt") ? readFileSync("fixture.txt", "utf8").trim() : "missing";
 const command = existsSync("command.txt") ? readFileSync("command.txt", "utf8").trim() : "missing";
 const subject = execFileSync("git", ["log", "-1", "--format=%s"], { encoding: "utf8" }).trim();
+if (process.env.REPORT_CONFIG_ISOLATION === "1") {
+  const home = process.env.CODEX_HOME;
+  const unexpected = ["config.toml", "dotfiles.config.toml", "developer-instructions.md", "sessions", "skills", "plugins", "AGENTS.md", "rules/default.rules"];
+  if (unexpected.some((file) => existsSync(home + "/" + file))) throw Error("caller customization leaked");
+  if (process.env.HOME !== home + "/user-home") throw Error("user home not isolated");
+  if (process.env.XDG_CONFIG_HOME !== process.env.HOME + "/.config") throw Error("config home not isolated");
+  if (!process.argv.includes('shell_environment_policy.set.HOME=' + JSON.stringify(process.env.EXPECT_TOOL_HOME))) throw Error("tool home not preserved");
+  if (!process.argv.includes('shell_environment_policy.set.XDG_CONFIG_HOME=' + JSON.stringify(process.env.EXPECT_TOOL_CONFIG))) throw Error("tool config home not preserved");
+  if (process.env.CODEX_ACCESS_TOKEN) {
+    if (existsSync(home + "/auth.json")) throw Error("saved auth copied despite runtime token");
+  } else {
+    if (readFileSync(home + "/auth.json", "utf8") !== "fixture-auth") throw Error("saved auth missing");
+    writeFileSync(home + "/auth.json", "refreshed-fixture-auth");
+  }
+  console.log(JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "configuration isolated" } }));
+}
 if (process.env.REPORT_CODEX_HOME === "1") {
   console.log(JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "codex_home=" + process.env.CODEX_HOME } }));
 }
@@ -376,6 +392,30 @@ test("one invocation renders and isolates selected scenarios", async (t) => {
   assert.equal(git(fixture.rustRepo, "worktree", "list", "--porcelain").match(/^worktree /gm)?.length, 1);
 });
 
+test("Codex excludes caller configuration and isolates credential copies", async (t) => {
+  const fixture = await makeFixture(t);
+  await writeScenario(fixture.scenarios, "configuration");
+  for (const file of ["config.toml", "dotfiles.config.toml", "developer-instructions.md", "AGENTS.md", "auth.json"]) {
+    await writeFile(path.join(fixture.codexHome, file), file === "auth.json" ? "fixture-auth" : "caller customization");
+  }
+  for (const dir of ["sessions", "skills", "plugins", "rules"]) {
+    await mkdir(path.join(fixture.codexHome, dir), { recursive: true });
+    await writeFile(path.join(fixture.codexHome, dir, "default.rules"), "caller customization");
+  }
+  const callerHome = path.join(fixture.root, "caller-home");
+  const callerConfig = path.join(fixture.root, "caller-config");
+  for (const token of ["", "fixture-runtime-token"]) {
+    const result = await runGenerator({ ...fixture, extraEnv: {
+      HOME: callerHome, XDG_CONFIG_HOME: callerConfig,
+      EXPECT_TOOL_HOME: callerHome, EXPECT_TOOL_CONFIG: callerConfig,
+      REPORT_CONFIG_ISOLATION: "1", CODEX_ACCESS_TOKEN: token,
+    } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(await readFile(path.join(fixture.scenarios, "configuration/codex.md"), "utf8"), /configuration isolated/);
+    assert.equal(await readFile(path.join(fixture.codexHome, "auth.json"), "utf8"), "fixture-auth");
+  }
+});
+
 test("isolated Codex homes use harness work storage and are cleaned up", async (t) => {
   const fixture = await makeFixture(t);
   await writeScenario(fixture.scenarios, "home-location");
@@ -498,6 +538,7 @@ function runGenerator({
       env: {
         ...process.env,
         CODEX_BIN: fakeCodex,
+        CODEX_ACCESS_TOKEN: "",
         CODEX_HOME: codexHome,
         CLAUDE_BIN: fakeClaude,
         TRANSCRIPTS_BOOTSTRAP_CACHE: path.join(root, "bootstrap-cache"),
