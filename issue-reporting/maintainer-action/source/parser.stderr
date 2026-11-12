@@ -1,0 +1,4 @@
+
+thread 'rustc' (18203) panicked at /rustc-dev/3ef0c22cdb86ac42dc6b8f0f1ec36857daa6f2a1/compiler/rustc_parse/src/parser/diagnostics.rs:2015:55:
+called `Result::unwrap()` on an `Err` value: Some(DiagInner { level: Error, messages: [(Inline("expected identifier, found keyword `{$token}`"), NoStyle)], code: None, span: MultiSpan { primary_spans: [target/rustc-control-research/issue165690.rs:2:10: 2:16 (#0)], span_labels: [(target/rustc-control-research/issue165690.rs:2:10: 2:16 (#0), Str("expected identifier, found keyword"))], span_context: [] }, children: [], suggestions: Enabled([]), args: {"token": Str("k#self")}, is_lint: None, long_ty_path: None, emitted_at: DiagLocation { file: "/rustc-dev/3ef0c22cdb86ac42dc6b8f0f1ec36857daa6f2a1/compiler/rustc_parse/src/parser/diagnostics.rs", line: 265, col: 34 } })
+stack backtrace:

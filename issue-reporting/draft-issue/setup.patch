@@ -1,8 +1,0 @@
-diff --git a/reporting-fixture/repro.rs b/reporting-fixture/repro.rs
-new file mode 100644
---- /dev/null
-+++ b/reporting-fixture/repro.rs
-@@ -0,0 +1,3 @@
-+fn main() {
-+    let _: u8 = "hello";
-+}

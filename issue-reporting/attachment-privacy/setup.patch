@@ -1,9 +1,0 @@
-diff --git a/reporting-fixture/raw/build.log b/reporting-fixture/raw/build.log
-new file mode 100644
---- /dev/null
-+++ b/reporting-fixture/raw/build.log
-@@ -0,0 +1,4 @@
-+command: ./x build
-+checkout: /home/fixture-person/private-checkout/rust
-+host: workstation.fixture.invalid
-+error: synthetic bootstrap fixture failure

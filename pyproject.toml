@@ -1,0 +1,12 @@
+[project]
+name = "rust-reporting-trials"
+version = "0.1.0"
+description = "Inspect trials of issue-reporting recommendations"
+requires-python = ">=3.11"
+dependencies = [
+    "inspect-ai==0.3.289",
+    "openai>=3.4,<4",
+]
+
+[tool.uv]
+package = false

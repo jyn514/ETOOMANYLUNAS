@@ -1,7 +1,0 @@
-{
-  "turns": [
-    {
-      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. My report concerns a compiler failure while building unchanged source on stable Rust. Another person suggests rewriting the source or using nightly as a workaround. Those are possible experiments, but this project's requirement is to compile that unchanged source on stable. Privately assess whether those workarounds resolve the reported outcome and what remains for upstream to consider. Do not draft a report or design a patch."
-    }
-  ]
-}

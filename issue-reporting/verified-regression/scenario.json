@@ -1,7 +1,0 @@
-{
-  "turns": [
-    {
-      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. With unchanged source, target, flags, and dependencies, I observed a successful build on stable release A and rejection on the next stable release B. I saved both full rustc version outputs and command logs. Which rust-lang/rust template fits these observations, and what evidence should accompany them? This is only template selection, not issue drafting, a bisection, or a request to verify the builds."
-    }
-  ]
-}

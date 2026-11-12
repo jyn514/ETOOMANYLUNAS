@@ -1,7 +1,0 @@
-{
-  "turns": [
-    {
-      "prompt": "Read AGENTS.md and .agents/skills/rust-issue-reporting/SKILL.md before handling this request. I invoke cargo build, but the failing output explicitly says rustc encountered an internal compiler error; Cargo only reports that the compiler process failed. This is a compiler crash, not a Cargo resolver or manifest error. Which repository and issue template should receive it, and what evidence should I collect? Do not investigate or draft the report."
-    }
-  ]
-}

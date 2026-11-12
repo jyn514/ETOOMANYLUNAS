@@ -1,0 +1,10 @@
+services:
+  default:
+    build: .
+    platform: linux/amd64
+    init: true
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    network_mode: none
+    ulimits:
+      core: 0

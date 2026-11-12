@@ -1,5 +1,7 @@
 = README
 
+For the four issue-filing decision trials, see link:issue-reporting/maintainer-action/README.md[the Inspect eval].
+
 Test link:rust-AGENTS.md[AGENTS.md] to see how effective it is at getting agents to follow the LLM policy and contributing guidelines.
 AGENTS.md has been through extensive revisions based on real failures; see the git history.
 
@@ -18,7 +20,7 @@ Differences between this and the dev-guide / policy:
 
 == Transcripts
 
-The link:issue-reporting/README.md[issue-reporting suite] has separate scenarios and instructions.
+The link:issue-reporting/README.md[issue-reporting Inspect eval] tests maintainer-action decisions separately from the CLI transcripts below.
 
 Click any link to see a transcript.
 `❯` indicates that this is a user prompt; `⏺` indicates this is output from the agent.

@@ -1,0 +1,4 @@
+error: rustc interrupted by SIGILL, printing backtrace
+...
+note: we would appreciate a report at https://github.com/rust-lang/rust
+note: backtrace dumped due to SIGILL! resuming signal
